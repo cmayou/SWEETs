@@ -27,7 +27,8 @@ anywhere: SWEETs connects once for every tool, so VendorGrid's key field and Cha
 
 ## Install
 
-Run `artifacts\installer\SWEETs-<version>-setup.exe` as administrator with SOLIDWORKS Electrical closed. Setup:
+Run `SWEETs-<version>-setup.exe` (download it from the `installer` folder of this repository, or build it into
+`artifacts\installer`) as administrator with SOLIDWORKS Electrical closed. Setup:
 
 - removes the stand-alone installs of the tools (their uninstallers run silently; VendorGrid: unregistered and
   `Program Files\VendorGrid` deleted; Change Log: its MSI is uninstalled) and deletes their add-in registry keys, so their
@@ -80,7 +81,6 @@ and SOLIDWORKS Electrical refuses the connection; `build\Build.ps1` stops before
 | Vendor data sheet PDFs (`DataSheetMfgPartsImport\samples`) | Kept locally; download from the manufacturers |
 | Test drawings and SWE line style files (`...DwgPatch.Tests\testdata`, `...LineStyles.Tests\testdata`) | Kept locally; those tests need them |
 | Stand-alone installers of VendorGrid, Change Log and the Datasheet Importer | Superseded by the SWEETs installer |
-| Built setup EXE | GitHub Releases |
 
 ```powershell
 .\build\Build.ps1                 # build, stage, write artifacts\SWEETs.iss, compile the setup EXE
