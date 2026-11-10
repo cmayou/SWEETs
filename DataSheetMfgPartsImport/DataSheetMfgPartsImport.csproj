@@ -1,0 +1,59 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <OutputType>Library</OutputType>
+    <AssemblyName>DataSheetMfgPartsImport</AssemblyName>
+    <RootNamespace>DataSheetMfgPartsImport</RootNamespace>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>10.0</LangVersion>
+    <UseWPF>true</UseWPF>
+    <GenerateResourceUsePreserializedResources>false</GenerateResourceUsePreserializedResources>
+    <Version>1.0.0</Version>
+    <Description>Reads manufacturer data sheets (offline rules or a local AI model) and adds the parts, with their circuits and terminals, to the SOLIDWORKS Electrical manufacturer parts manager under a library.</Description>
+    <Deterministic>true</Deterministic>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Shared SWEETs look (colours, buttons, inputs, window headers). -->
+    <ProjectReference Include="..\src\SWEETs.UI\SWEETs.UI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Files from the earlier WinForms version. Extracting a zip over an old folder does not delete them, so the build
+         ignores them if they are still there. Safe to delete from disk. -->
+    <Compile Remove="Archive\ArchiveWriter.cs;Archive\CircuitTypes.cs;Archive\TerminalPlan.cs;UI\MainForm.cs;UI\SettingsForm.cs" />
+    <Compile Remove="installer\**" />
+    <!-- SWEETs: the host add-in (SWEETs.AddIn) owns the ribbon now; the stand-alone tab code is not compiled. -->
+    <Compile Remove="RibbonUi.cs" />
+    <EmbeddedResource Remove="installer\**" />
+    <None Remove="installer\**" />
+    <Page Remove="installer\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Icons\*.png" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Also built into the add-in so the dialog header can show the icon through a pack URI. -->
+    <Resource Include="Icons\import32.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 0.1.9 to match SWEETs.SwePdfSchematic.Core: SWEETs installs both tools into one folder, which can hold only one PdfPig. -->
+    <PackageReference Include="PdfPig" Version="0.1.9" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Data" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Security" />
+    <!-- System.Web.Extensions (JSON) depends on System.Web and System.Configuration. The XAML compiler loads every
+         referenced assembly and fails with MC1000 unless these two are referenced explicitly. -->
+    <Reference Include="System.Web" />
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Web.Extensions" />
+  </ItemGroup>
+
+</Project>

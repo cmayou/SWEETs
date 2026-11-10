@@ -1,0 +1,31 @@
+Expected result of the offline rules engine for samples/gladiatormccbgcb100.pdf
+(AutomationDirect Gladiator MCCB GCB100 price list and specifications, one part per table row).
+Checked against the PDF text with the same position-aware table logic used in GridTables.cs.
+
+parts             41: 22 circuit breakers (11 two-pole, 11 three-pole) and 19 accessories
+manufacturer      AutomationDirect
+series            Gladiator MCCB GCB100
+
+breaker, for example GCB100S-3FF50LL:
+  description     Gladiator MCCB GCB100 3-pole, 50 A      (flagged: built from the table row)
+  category        Circuit breaker                         (flagged: guessed from keywords)
+  ratedCurrent    50
+  poles           3                                       (from the table title)
+  frequency       50/60                                   (a merged cell shared by all rows)
+  ratedVoltage    120/240; 240; 480; 600Y/347 AC          (flagged: several ratings listed)
+  unitPrice       263.00     currency USD                 (flagged: assumed dollars from the $ sign)
+  weight          1.06 kg                                 (3-pole column of the specification table; 2-pole is 0.74)
+  otherSpecs      AC interrupt capacity: 120/240 V = 65 kA; 240 V = 65 kA; 480 V = 35 kA; 600Y/347 V = 18 kA;
+                  DC interrupt capacity: 250 V (2P) = 25 kA; 500 V (3P) = 35 kA;
+                  Insulation voltage Ui: 750 VAC; Impulse withstand Uimp: 8 KVAC; Utilization category: A;
+                  Service breaking capacity Ics: 100%
+
+accessory, for example GCBX1-SHT-24VDC:
+  description     Gladiator field installable shunt trip, right side mount, 24 VAC/VDC coil voltage, screw terminals.
+  category        Circuit breaker accessory
+  unitPrice       29.50      currency USD
+
+Known misses:
+  GCBX5-BATT (page 10): the part number and price are so close that they read as one cell, so this single part is skipped.
+  Rows of the lug, derating, internal accessory and flange-handle compatibility tables are not read as parts.
+  Dimensions: this sheet gives none.

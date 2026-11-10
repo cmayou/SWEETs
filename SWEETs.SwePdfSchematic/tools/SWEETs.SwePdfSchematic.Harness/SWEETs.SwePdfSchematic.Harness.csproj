@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Runs the importer UI outside SOLIDWORKS Electrical (simulate-only) for fast UI/recognizer iteration.
+       Uses the EwAPI interop the add-in project generates into lib\ (build the add-in first). -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <PlatformTarget>x64</PlatformTarget>
+    <Platforms>x64</Platforms>
+    <StartupObject>SWEETs.SwePdfSchematic.Harness.Program</StartupObject>
+    <SweInstallDir Condition="'$(SweInstallDir)' == ''">$(ProgramW6432)\SOLIDWORKS Corp\SOLIDWORKS Electrical</SweInstallDir>
+    <SweApiAssembly Condition="'$(SweApiAssembly)' == '' and Exists('$(SweInstallDir)\bin\Interop.EwAPI.dll')">$(SweInstallDir)\bin\Interop.EwAPI.dll</SweApiAssembly>
+    <SweApiAssembly Condition="'$(SweApiAssembly)' == ''">$(MSBuildThisFileDirectory)..\..\lib\Interop.EwAPI.dll</SweApiAssembly>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SWEETs.SwePdfSchematic.AddIn\SWEETs.SwePdfSchematic.AddIn.csproj" />
+    <Reference Include="EwAPI">
+      <HintPath>$(SweApiAssembly)</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+</Project>

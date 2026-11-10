@@ -1,0 +1,393 @@
+﻿<Window x:Class="SWEETs.SweDrawingParameters.AddIn.UI.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="clr-namespace:SWEETs.SweDrawingParameters.AddIn.UI"
+        xmlns:vm="clr-namespace:SWEETs.SweDrawingParameters.AddIn.UI.ViewModels"
+        Title="Update Project Drawing Parameters"
+        Width="1180" Height="760" MinWidth="960" MinHeight="600"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="13"
+        Background="#F5F6F8" UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/SWEETs.SweDrawingParameters.AddIn;component/UI/Theme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <ui:BoolToVisibility x:Key="BoolToVis" />
+            <ui:HasValueToVisibility x:Key="HasValueToVis" />
+
+            <!-- Numeric field -->
+            <Style x:Key="Num" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                <Setter Property="Width" Value="96" />
+                <Setter Property="TextAlignment" Value="Right" />
+                <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+            </Style>
+
+            <!-- Section header with an "apply" switch -->
+            <Style x:Key="ApplySwitch" TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="FontSize" Value="14" />
+                <Setter Property="Foreground" Value="{StaticResource Ink}" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+            </Style>
+
+            <!-- Status pill used in the drawing list -->
+            <DataTemplate x:Key="StatePill" DataType="{x:Type vm:DrawingRowViewModel}">
+                <Border x:Name="Pill" CornerRadius="10" Padding="8,2" HorizontalAlignment="Left"
+                        Background="{StaticResource SurfaceAlt}" ToolTip="{Binding Detail}">
+                    <TextBlock x:Name="Txt" Text="{Binding StateText}" FontSize="11.5" FontWeight="SemiBold"
+                               Foreground="{StaticResource InkMuted}" />
+                </Border>
+                <DataTemplate.Triggers>
+                    <DataTrigger Binding="{Binding State}" Value="Verified">
+                        <Setter TargetName="Pill" Property="Background" Value="{StaticResource SuccessSoft}" />
+                        <Setter TargetName="Txt" Property="Foreground" Value="{StaticResource Success}" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding State}" Value="Working">
+                        <Setter TargetName="Pill" Property="Background" Value="{StaticResource AccentSoft}" />
+                        <Setter TargetName="Txt" Property="Foreground" Value="{StaticResource Accent}" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding State}" Value="NotSupported">
+                        <Setter TargetName="Pill" Property="Background" Value="{StaticResource WarningSoft}" />
+                        <Setter TargetName="Txt" Property="Foreground" Value="{StaticResource Warning}" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding State}" Value="Failed">
+                        <Setter TargetName="Pill" Property="Background" Value="{StaticResource DangerSoft}" />
+                        <Setter TargetName="Txt" Property="Foreground" Value="{StaticResource Danger}" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding State}" Value="Skipped">
+                        <Setter TargetName="Pill" Property="Background" Value="{StaticResource WarningSoft}" />
+                        <Setter TargetName="Txt" Property="Foreground" Value="{StaticResource Warning}" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding State}" Value="Unreadable">
+                        <Setter TargetName="Pill" Property="Background" Value="{StaticResource WarningSoft}" />
+                        <Setter TargetName="Txt" Property="Foreground" Value="{StaticResource Warning}" />
+                    </DataTrigger>
+                </DataTemplate.Triggers>
+            </DataTemplate>
+
+            <!-- Type filter chip -->
+            <Style x:Key="FilterChip" TargetType="ToggleButton">
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Margin" Value="0,0,6,0" />
+                <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ToggleButton">
+                            <Border x:Name="Bd" CornerRadius="12" Padding="10,3" BorderThickness="1"
+                                    Background="{StaticResource Surface}" BorderBrush="{StaticResource Border}">
+                                <ContentPresenter TextElement.Foreground="{StaticResource InkMuted}" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentSoft}" />
+                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Accent}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="ColHeader" TargetType="GridViewColumnHeader">
+                <Setter Property="HorizontalContentAlignment" Value="Left" />
+                <Setter Property="Padding" Value="8,6" />
+                <Setter Property="FontSize" Value="11.5" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Foreground" Value="{StaticResource InkSubtle}" />
+                <Setter Property="Background" Value="{StaticResource SurfaceAlt}" />
+                <Setter Property="BorderThickness" Value="0,0,0,1" />
+                <Setter Property="BorderBrush" Value="{StaticResource Border}" />
+            </Style>
+
+            <Style x:Key="Row" TargetType="ListViewItem">
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="Padding" Value="0,5" />
+                <Setter Property="BorderThickness" Value="0,0,0,1" />
+                <Setter Property="BorderBrush" Value="#EEF0F3" />
+            </Style>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <DockPanel>
+        <!-- ===== Header (SWEETs light header bar) ===== -->
+        <Border DockPanel.Dock="Top" Style="{StaticResource Header.Bar}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Image Style="{StaticResource Header.Icon}" Source="pack://application:,,,/SWEETs.SweDrawingParameters.AddIn;component/Resources/ribbon-icon.png" />
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Style="{StaticResource Header.Overline}" Text="SWEETs · Drawing Tools" />
+                    <TextBlock Style="{StaticResource Header.Title}" Text="Update Project Drawing Parameters" />
+                    <TextBlock Style="{StaticResource Header.Subtitle}"
+                               Text="Set snap, grid, grid zone and ortho on every drawing of the open project. Values are in drawing units. Close the drawings first." />
+                </StackPanel>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+                    <Border Style="{StaticResource Chip}" Margin="0,0,8,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Project" Style="{StaticResource Text.Caption}" Margin="0,0,6,0" />
+                            <TextBlock Text="{Binding ProjectName}" FontWeight="SemiBold" Foreground="{StaticResource Ink}" />
+                        </StackPanel>
+                    </Border>
+                    <Button Content="Refresh" Style="{StaticResource Btn.Secondary}" Command="{Binding RefreshCommand}"
+                            ToolTip="Reload the drawing list and current values" />
+                </StackPanel>
+            </Grid>
+        </Border>
+        <Grid Margin="20,16,20,16">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />   <!-- (header is in the bar above) -->
+                <RowDefinition Height="Auto" />   <!-- banner -->
+                <RowDefinition Height="*" />      <!-- body -->
+                <RowDefinition Height="Auto" />   <!-- footer -->
+            </Grid.RowDefinitions>
+
+            <!-- ===== Banner ===== -->
+            <Border Grid.Row="1" x:Name="BannerBox" CornerRadius="8" Padding="12,9" Margin="0,0,0,12" BorderThickness="1"
+                    Visibility="{Binding BannerText, Converter={StaticResource HasValueToVis}}">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="{StaticResource AccentSoft}" />
+                        <Setter Property="BorderBrush" Value="{StaticResource AccentSoft}" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding BannerKind}" Value="Success">
+                                <Setter Property="Background" Value="{StaticResource SuccessSoft}" />
+                                <Setter Property="BorderBrush" Value="{StaticResource Success}" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding BannerKind}" Value="Warning">
+                                <Setter Property="Background" Value="{StaticResource WarningSoft}" />
+                                <Setter Property="BorderBrush" Value="{StaticResource Warning}" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding BannerKind}" Value="Error">
+                                <Setter Property="Background" Value="{StaticResource DangerSoft}" />
+                                <Setter Property="BorderBrush" Value="{StaticResource Danger}" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <TextBlock Text="{Binding BannerText}" Style="{StaticResource Text.Body}" />
+            </Border>
+
+            <!-- ===== Body ===== -->
+            <Grid Grid.Row="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="360" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Parameter cards -->
+                <ScrollViewer VerticalScrollBarVisibility="Auto" IsEnabled="{Binding IsBusy, Converter={x:Static ui:InverseBool.Instance}}">
+                    <StackPanel>
+
+                        <!-- Snap -->
+                        <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                            <StackPanel>
+                                <CheckBox Style="{StaticResource ApplySwitch}" Content="Snap" IsChecked="{Binding ApplySnap}" />
+                                <StackPanel IsEnabled="{Binding ApplySnap}" Margin="24,4,0,0">
+                                    <CheckBox Content="Snap on (F9)" IsChecked="{Binding SnapOn}" Margin="0,4,0,0" />
+                                    <TextBlock Text="SNAP SPACING" Style="{StaticResource FieldLabel}" />
+                                    <TextBox Style="{StaticResource Num}" HorizontalAlignment="Left" Text="{Binding SnapSpacing, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Snap spacing" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Grid -->
+                        <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                            <StackPanel>
+                                <CheckBox Style="{StaticResource ApplySwitch}" Content="Grid" IsChecked="{Binding ApplyGrid}" />
+                                <StackPanel IsEnabled="{Binding ApplyGrid}" Margin="24,4,0,0">
+                                    <CheckBox Content="Grid on (F7)" IsChecked="{Binding GridOn}" Margin="0,4,0,0" />
+                                    <TextBlock Text="GRID SPACING" Style="{StaticResource FieldLabel}" />
+                                    <TextBox Style="{StaticResource Num}" HorizontalAlignment="Left" Text="{Binding GridSpacing, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Grid spacing" />
+                                    <TextBlock Style="{StaticResource Text.Caption}" Margin="0,6,0,0" TextWrapping="Wrap"
+                                               Text="Tip: make the grid spacing a multiple of the snap spacing." />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Grid zone -->
+                        <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                            <StackPanel>
+                                <CheckBox Style="{StaticResource ApplySwitch}" Content="Grid zone" IsChecked="{Binding ApplyZone}" />
+                                <Grid IsEnabled="{Binding ApplyZone}" Margin="24,4,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Grid.ColumnSpan="2" Text="LOWER-LEFT  X / Y" Style="{StaticResource FieldLabel}" />
+                                    <TextBox Grid.Row="1" Style="{StaticResource Num}" Text="{Binding ZoneMinX, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Grid zone lower-left X" />
+                                    <TextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource Num}" Margin="8,0,0,0" Text="{Binding ZoneMinY, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Grid zone lower-left Y" />
+                                    <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Text="UPPER-RIGHT  X / Y" Style="{StaticResource FieldLabel}" />
+                                    <TextBox Grid.Row="3" Style="{StaticResource Num}" Text="{Binding ZoneMaxX, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Grid zone upper-right X" />
+                                    <TextBox Grid.Row="3" Grid.Column="1" Style="{StaticResource Num}" Margin="8,0,0,0" Text="{Binding ZoneMaxY, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Grid zone upper-right Y" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Ortho -->
+                        <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                            <StackPanel>
+                                <CheckBox Style="{StaticResource ApplySwitch}" Content="Ortho" IsChecked="{Binding ApplyOrtho}" />
+                                <CheckBox Content="Ortho on (F8)" IsChecked="{Binding OrthoOn}" IsEnabled="{Binding ApplyOrtho}" Margin="24,8,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Object snap: information only -->
+                        <Border Style="{StaticResource Card}" Margin="0,0,0,10" Background="{StaticResource SurfaceAlt}">
+                            <StackPanel>
+                                <TextBlock Text="Object snap modes" Style="{StaticResource Text.Subtitle}" FontSize="14" />
+                                <TextBlock Style="{StaticResource Text.Caption}" Margin="0,4,0,0" TextWrapping="Wrap"
+                                           Text="Not stored in drawings: since DWG 2000, object snap (OSMODE) is a SOLIDWORKS Electrical setting, not a drawing setting. Set it once in Drawing parameters › Object snap-on modes." />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- Drawings -->
+                <Border Grid.Column="2" Style="{StaticResource Card}" Padding="0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <!-- KPIs -->
+                        <Grid Margin="16,14,16,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Drawings" Style="{StaticResource Text.Subtitle}" />
+                                <TextBlock Style="{StaticResource Text.Caption}" Text="Current values are read from each drawing file. Right-click a drawing to copy its values." />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="16,0,0,0">
+                                <TextBlock Text="SELECTED" Style="{StaticResource Text.Overline}" />
+                                <TextBlock Style="{StaticResource Text.Kpi}">
+                                    <Run Text="{Binding SelectedCount, Mode=OneWay}" /><Run Text=" / " Foreground="{StaticResource InkSubtle}" FontSize="16" /><Run Text="{Binding TotalCount, Mode=OneWay}" Foreground="{StaticResource InkSubtle}" FontSize="16" />
+                                </TextBlock>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Margin="24,0,0,0">
+                                <TextBlock Text="CAN'T UPDATE" Style="{StaticResource Text.Overline}" />
+                                <TextBlock Style="{StaticResource Text.Kpi}" Foreground="{StaticResource Warning}" Text="{Binding UnreadableCount}" />
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Toolbar -->
+                        <DockPanel Grid.Row="1" Margin="16,0,16,10" LastChildFill="False">
+                            <Button DockPanel.Dock="Left" Content="Select all" Style="{StaticResource Btn.Ghost}" Command="{Binding SelectAllCommand}" />
+                            <Button DockPanel.Dock="Left" Content="None" Style="{StaticResource Btn.Ghost}" Command="{Binding SelectNoneCommand}" Margin="4,0,12,0" />
+                            <ItemsControl DockPanel.Dock="Left" ItemsSource="{Binding TypeFilters}" VerticalAlignment="Center">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <ToggleButton Style="{StaticResource FilterChip}" IsChecked="{Binding IsChecked}"
+                                                      IsEnabled="{Binding DataContext.IsBusy, RelativeSource={RelativeSource AncestorType=Window}, Converter={x:Static ui:InverseBool.Instance}}">
+                                            <TextBlock FontSize="12"><Run Text="{Binding Label, Mode=OneWay}" /><Run Text="  " /><Run Text="{Binding Count, Mode=OneWay}" FontWeight="SemiBold" /></TextBlock>
+                                        </ToggleButton>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </DockPanel>
+
+                        <!-- List -->
+                        <ListView Grid.Row="2" x:Name="DrawingList" ItemsSource="{Binding Rows}" BorderThickness="0,1,0,0"
+                                  BorderBrush="{StaticResource Border}" ItemContainerStyle="{StaticResource Row}"
+                                  SelectionMode="Single" VirtualizingPanel.IsVirtualizing="True" ScrollViewer.HorizontalScrollBarVisibility="Auto">
+                            <ListView.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Use this drawing's values"
+                                              Command="{Binding PlacementTarget.DataContext.UseRowValuesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              CommandParameter="{Binding PlacementTarget.SelectedItem, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                </ContextMenu>
+                            </ListView.ContextMenu>
+                            <ListView.View>
+                                <GridView ColumnHeaderContainerStyle="{StaticResource ColHeader}">
+                                    <GridViewColumn Width="40">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <CheckBox IsChecked="{Binding IsSelected}" HorizontalAlignment="Center"
+                                                          IsEnabled="{Binding DataContext.IsBusy, RelativeSource={RelativeSource AncestorType=Window}, Converter={x:Static ui:InverseBool.Instance}}"
+                                                          AutomationProperties.Name="{Binding Name}" />
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                    <GridViewColumn Header="#" Width="44" DisplayMemberBinding="{Binding Position}" />
+                                    <GridViewColumn Header="DRAWING" Width="230">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Description}" FontWeight="SemiBold" Foreground="{StaticResource Ink}" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Style="{StaticResource Text.Caption}"><Run Text="{Binding TypeLabel, Mode=OneWay}" /><Run Text=" · " /><Run Text="{Binding Name, Mode=OneWay}" /></TextBlock>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                    <GridViewColumn Header="SNAP" Width="120">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate><TextBlock Text="{Binding SnapText}" FontFamily="{StaticResource MonoFont}" FontSize="12" /></DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                    <GridViewColumn Header="GRID" Width="120">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate><TextBlock Text="{Binding GridText}" FontFamily="{StaticResource MonoFont}" FontSize="12" /></DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                    <GridViewColumn Header="GRID ZONE" Width="150">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate><TextBlock Text="{Binding ZoneText}" FontFamily="{StaticResource MonoFont}" FontSize="12" /></DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                    <GridViewColumn Header="ORTHO" Width="60" DisplayMemberBinding="{Binding OrthoText}" />
+                                    <GridViewColumn Header="STATUS" Width="110" CellTemplate="{StaticResource StatePill}" />
+                                </GridView>
+                            </ListView.View>
+                        </ListView>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- ===== Footer ===== -->
+            <Grid Grid.Row="3" Margin="0,14,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                    <ProgressBar Style="{StaticResource ThinProgress}" Maximum="1" Value="{Binding Progress, Mode=OneWay}"
+                                 Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}" Margin="0,0,0,6" />
+                    <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding ProgressText}"
+                               Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}" />
+                    <TextBlock Style="{StaticResource Text.Caption}" Foreground="{StaticResource Warning}" Text="{Binding ValidationMessage}"
+                               Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Content="Backups" Style="{StaticResource Btn.Ghost}" Command="{Binding OpenBackupsCommand}" ToolTip="Open the folder with the drawing copies made before each update" />
+                    <Button Content="Log" Style="{StaticResource Btn.Ghost}" Command="{Binding OpenLogCommand}" Margin="4,0,12,0" />
+                    <Button Content="Close" Style="{StaticResource Btn.Secondary}" IsCancel="True" Click="OnClose" Margin="0,0,8,0"
+                            IsEnabled="{Binding IsBusy, Converter={x:Static ui:InverseBool.Instance}}" />
+                    <Button Content="{Binding ApplyCaption}" Style="{StaticResource Btn.Primary}" Command="{Binding ApplyCommand}" IsDefault="True" MinWidth="170" />
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </DockPanel>
+</Window>

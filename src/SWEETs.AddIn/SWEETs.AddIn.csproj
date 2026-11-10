@@ -1,0 +1,122 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    SWEETs: SOLIDWORKS Electrical 2026 add-in (COM, x64, .NET Framework 4.8, WPF UI) that hosts every SWEETs tool on
+    one "SWEETs" ribbon tab:
+      Drawing Tools : SWEETs.SweDrawingParameters.AddIn, SWEETs.SweLineStyles.AddIn
+      Import Tools  : SWEETs.SwePdfSchematic.AddIn (+ Core), DataSheetMfgPartsImport
+      Export Tools  : VendorGrid
+      Project Tools : ChangeLog.AddIn (+ ChangeLog.Core), six buttons
+      Settings      : turn tools on/off (%AppData%\SWEETs\settings.ini)
+
+    Each tool stays in its own project and builds as a class library; this project references them all, so its
+    output folder holds the complete payload that build\Build.ps1 stages and packages.
+
+    EwAPI interop: compiled against the interop SOLIDWORKS Electrical ships (bin\Interop.EwAPI.dll); when that is
+    missing, lib\Interop.EwAPI.dll is generated from EwAPIX.dll with TlbImp. Overrides:
+      /p:SweTypeLibrary="D:\SWE\EwAPIX.dll"       where EwAPIX.dll lives
+      /p:SweApiAssembly="...\Interop.EwAPI.dll"   use an existing interop instead
+  -->
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <PlatformTarget>x64</PlatformTarget>
+    <Platforms>x64</Platforms>
+    <RootNamespace>SWEETs.AddIn</RootNamespace>
+    <AssemblyName>SWEETs.AddIn</AssemblyName>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <SweInstallDir Condition="'$(SweInstallDir)' == ''">$(ProgramW6432)\SOLIDWORKS Corp\SOLIDWORKS Electrical</SweInstallDir>
+    <SweLibDir>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\lib'))</SweLibDir>
+    <SweTypeLibrary Condition="'$(SweTypeLibrary)' == '' and Exists('$(SweInstallDir)\bin\ewapix.dll')">$(SweInstallDir)\bin\ewapix.dll</SweTypeLibrary>
+    <SweTypeLibrary Condition="'$(SweTypeLibrary)' == ''">$(SweLibDir)\EwAPIX.dll</SweTypeLibrary>
+    <SweApiAssembly Condition="'$(SweApiAssembly)' == '' and Exists('$(SweInstallDir)\bin\Interop.EwAPI.dll')">$(SweInstallDir)\bin\Interop.EwAPI.dll</SweApiAssembly>
+    <SweApiAssembly Condition="'$(SweApiAssembly)' == ''">$(SweLibDir)\Interop.EwAPI.dll</SweApiAssembly>
+  </PropertyGroup>
+
+  <!-- SOLIDWORKS Electrical API key(s): Secrets\SweApiKeys.local.cs (git-ignored) when present, otherwise the empty
+       template. Build.ps1 refuses to package an installer without the local file. -->
+  <PropertyGroup>
+    <SweApiKeysLocal>$(MSBuildThisFileDirectory)Secrets\SweApiKeys.local.cs</SweApiKeysLocal>
+  </PropertyGroup>
+  <ItemGroup Condition="Exists('$(SweApiKeysLocal)')">
+    <Compile Remove="Secrets\SweApiKeys.template.cs" />
+  </ItemGroup>
+  <Target Name="WarnMissingSweApiKeys" BeforeTargets="CoreCompile" Condition="!Exists('$(SweApiKeysLocal)')">
+    <Warning Text="Secrets\SweApiKeys.local.cs not found: building without a SOLIDWORKS Electrical API key. Copy Secrets\SweApiKeys.template.cs to SweApiKeys.local.cs and add your key." />
+  </Target>
+
+  <ItemGroup>
+    <!-- Shared SWEETs look (colours, buttons, inputs, window headers). -->
+    <ProjectReference Include="..\SWEETs.UI\SWEETs.UI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- EwAPI interop. SWE already has its own Interop.EwAPI loaded when it loads add-ins, so a second copy next to
+         the add-in would create duplicate EwAPI types and break every interface cast: never copy it. -->
+    <Reference Include="EwAPI">
+      <HintPath>$(SweApiAssembly)</HintPath>
+      <Private>false</Private>
+      <EmbedInteropTypes>false</EmbedInteropTypes>
+    </Reference>
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Windows.Forms" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\SWEETs.SweDrawingParameters\src\SWEETs.SweDrawingParameters.AddIn\SWEETs.SweDrawingParameters.AddIn.csproj" />
+    <ProjectReference Include="..\..\SWEETs.SweLineStyles\src\SWEETs.SweLineStyles.AddIn\SWEETs.SweLineStyles.AddIn.csproj" />
+    <ProjectReference Include="..\..\SWEETs.SwePdfSchematic\src\SWEETs.SwePdfSchematic.AddIn\SWEETs.SwePdfSchematic.AddIn.csproj" />
+    <ProjectReference Include="..\..\DataSheetMfgPartsImport\DataSheetMfgPartsImport.csproj" />
+    <ProjectReference Include="..\..\VendorGrid\src\VendorGrid\VendorGrid.csproj" />
+    <ProjectReference Include="..\..\SWE-ChangeLog\src\ChangeLog.AddIn\ChangeLog.AddIn.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- SWEETs' own icons -->
+    <None Include="Resources\settings-16.png" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Resources\settings-32.png" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Resources\sweets.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Resource Include="Resources\sweets-32.png" />   <!-- Settings window header icon -->
+
+    <!-- Each tool's ribbon icon, under a name of its own (three tools call theirs Resources\ribbon-icon-32.png). -->
+    <None Include="..\..\SWEETs.SweDrawingParameters\src\SWEETs.SweDrawingParameters.AddIn\Resources\ribbon-icon-32.png" Link="Resources\drawing-parameters-32.png" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\SWEETs.SweLineStyles\src\SWEETs.SweLineStyles.AddIn\Resources\ribbon-icon-32.png" Link="Resources\line-styles-32.png" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\SWEETs.SwePdfSchematic\src\SWEETs.SwePdfSchematic.AddIn\Resources\ribbon-icon-32.png" Link="Resources\pdf-to-schematic-32.png" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\DataSheetMfgPartsImport\Icons\import16.png" Link="Resources\datasheet-importer-16.png" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\DataSheetMfgPartsImport\Icons\import32.png" Link="Resources\datasheet-importer-32.png" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\DataSheetMfgPartsImport\Icons\import64.png" Link="Resources\datasheet-importer-64.png" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\VendorGrid\src\VendorGrid\Resources\VendorGrid_16.png" Link="Resources\vendorgrid-16.png" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\VendorGrid\src\VendorGrid\Resources\VendorGrid_32.png" Link="Resources\vendorgrid-32.png" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\VendorGrid\src\VendorGrid\Resources\VendorGrid_64.png" Link="Resources\vendorgrid-64.png" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Change Log's six button icons (Resources\changelog_*.png, compare_*, baseline_*, export_*, verify_*, settings_*)
+         are Content of ChangeLog.AddIn and land in Resources\ under their own names; its docked pane loads them there. -->
+  </ItemGroup>
+
+  <!-- Remove a stale copy (it would shadow SWE's interop at runtime). -->
+  <Target Name="RemoveStaleEwApiInterop" AfterTargets="Build">
+    <Delete Files="$(OutDir)Interop.EwAPI.dll;$(OutDir)Interop.x64.EwAPI.dll" ContinueOnError="true" />
+  </Target>
+
+  <!-- Generate lib\Interop.EwAPI.dll from EwAPIX.dll's type library when no interop is available. -->
+  <Target Name="GenerateEwApiInterop" BeforeTargets="ResolveAssemblyReferences" Condition="!Exists('$(SweApiAssembly)')">
+    <ItemGroup>
+      <_TlbImp Include="$(MSBuildProgramFiles32)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8.1 Tools\x64\TlbImp.exe" />
+      <_TlbImp Include="$(MSBuildProgramFiles32)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8 Tools\x64\TlbImp.exe" />
+      <_TlbImp Include="$(MSBuildProgramFiles32)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.7.2 Tools\x64\TlbImp.exe" />
+      <_TlbImp Include="$(MSBuildProgramFiles32)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6.1 Tools\x64\TlbImp.exe" />
+      <_TlbImpFound Include="@(_TlbImp)" Condition="Exists('%(FullPath)')" />
+    </ItemGroup>
+    <PropertyGroup>
+      <_TlbImpExe Condition="'$(TlbImpPath)' != ''">$(TlbImpPath)</_TlbImpExe>
+      <_TlbImpExe Condition="'$(_TlbImpExe)' == '' and '@(_TlbImpFound)' != ''">%(_TlbImpFound.FullPath)</_TlbImpExe>
+    </PropertyGroup>
+    <Error Condition="!Exists('$(SweTypeLibrary)')"
+           Text="EwAPIX.dll not found at '$(SweTypeLibrary)'. Install SOLIDWORKS Electrical 2026, copy EwAPIX.dll to '$(SweLibDir)', or pass /p:SweTypeLibrary=&lt;path&gt;." />
+    <Error Condition="'$(_TlbImpExe)' == ''"
+           Text="TlbImp.exe not found. Install the '.NET Framework 4.8 SDK' component in the Visual Studio Installer, or pass /p:TlbImpPath=&lt;path to x64 TlbImp.exe&gt;." />
+    <MakeDir Directories="$(SweLibDir)" />
+    <Exec Command="&quot;$(_TlbImpExe)&quot; &quot;$(SweTypeLibrary)&quot; /out:&quot;$(SweApiAssembly)&quot; /namespace:EwAPI /machine:X64 /nologo" />
+    <Message Importance="high" Text="Generated EwAPI interop: $(SweApiAssembly)" />
+  </Target>
+</Project>

@@ -1,0 +1,17 @@
+Expected result of the offline rules engine for samples/430250400.pdf (Molex Micro-Fit 3.0 housing).
+Checked against the PDF text with the same patterns used in RulesExtractor.cs.
+
+manufacturer      Molex                       (the logo is an image; found from "Molex" in the text)
+partNumber        430250400
+description       Micro-Fit 3.0 Receptacle Housing, Dual Row, 4 Circuits, UL 94V-0, Low-Halogen, Black
+series            43025
+category          Connector Housings          (as printed)
+ean               800754315234                (printed as UPC)
+poles             4                           (flagged: taken from the circuits count)
+weight            0.000422                    (kg; the sheet says 0.422/g)
+tempRange         -40...+105
+mounting          (empty: "Panel Mount: No" must not be read as a mounting type)
+otherSpecs        Application: ...; Product Family: ...; Product Name: ...; Color - Resin: Black;
+                  Flammability: 94V-0; Gender: Receptacle; Material - Resin: Nylon; Number of Rows: 2;
+                  Pitch - Mating Interface: 3.00mm; ...
+Not on this sheet and left empty: voltage, current, power, frequency, coil voltage, IP rating, dimensions.

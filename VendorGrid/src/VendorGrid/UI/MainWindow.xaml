@@ -1,0 +1,1129 @@
+<Window x:Class="VendorGrid.UI.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="clr-namespace:VendorGrid.UI"
+        Title="VendorGrid — Part Search"
+        Icon="pack://application:,,,/VendorGrid;component/Resources/VendorGrid.ico"
+        Width="1240" Height="860" MinWidth="880" MinHeight="600"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource Bg}"
+        FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="13"
+        UseLayoutRounding="True" SnapsToDevicePixels="True">
+
+    <Window.Resources>
+
+        <!-- Small coloured vendor badge (works for any item with LogoBrush and Code). -->
+        <DataTemplate x:Key="VendorLogoTemplate">
+            <Grid Width="22" Height="22" VerticalAlignment="Center">
+                <Border CornerRadius="4" Background="{Binding LogoBrush}" Visibility="{Binding NoLogo, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Text="{Binding Code}" Foreground="White" FontSize="10" FontWeight="SemiBold"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+                <Image Source="{Binding LogoImage}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"
+                       Visibility="{Binding HasLogo, Converter={StaticResource BoolToVis}}"/>
+            </Grid>
+        </DataTemplate>
+
+        <!-- Quantity preset chip (1, 10, 25 … 10k). -->
+        <DataTemplate x:Key="PresetTemplate">
+            <ToggleButton Content="{Binding Label}" Style="{StaticResource FilterChip}" MinHeight="26" Margin="0,2,6,2"
+                          FontFamily="Cascadia Mono, Consolas" IsChecked="{Binding IsActive, Mode=OneWay}"
+                          Command="{Binding DataContext.QuickQuantityCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                          CommandParameter="{Binding Value}" AutomationProperties.Name="Set quantity"/>
+        </DataTemplate>
+
+        <!-- ======================= MATRIX (table) ROW ======================= -->
+        <DataTemplate x:Key="TableRowTemplate">
+            <Border x:Name="RowBd" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="12,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2.3*"/>
+                        <ColumnDefinition Width="1.15*"/>
+                        <ColumnDefinition Width="1.1*"/>
+                        <ColumnDefinition Width="1.15*"/>
+                        <ColumnDefinition Width="0.75*"/>
+                        <ColumnDefinition Width="1.1*"/>
+                        <ColumnDefinition Width="1.0*"/>
+                        <ColumnDefinition Width="190"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Distributor -->
+                    <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                        <WrapPanel>
+                            <ToggleButton Style="{StaticResource StarToggle}" IsChecked="{Binding Vendor.IsFavorite, Mode=OneWay}" Margin="0,0,4,2"
+                                          Command="{Binding DataContext.ToggleFavoriteCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                          CommandParameter="{Binding Vendor}" ToolTip="Star to list this vendor first" AutomationProperties.Name="Favourite vendor"/>
+                            <ContentControl Content="{Binding Vendor}" ContentTemplate="{StaticResource VendorLogoTemplate}" Margin="0,0,6,2"/>
+                            <TextBlock Text="{Binding Vendor.Name}" FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center" Margin="0,0,8,2"/>
+                            <Border Style="{StaticResource Badge}" Background="#CFFAFE" BorderBrush="#67E8F9" Visibility="{Binding IsBestPrice, Converter={StaticResource BoolToVis}}"><StackPanel Orientation="Horizontal"><TextBlock Text="●" FontSize="9" Foreground="#155E75" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="BEST PRICE" FontSize="10" FontWeight="SemiBold" Foreground="#155E75"/></StackPanel></Border>
+                            <Border Style="{StaticResource Badge}" Background="#DBEAFE" BorderBrush="#93C5FD" Visibility="{Binding IsMaxStock, Converter={StaticResource BoolToVis}}"><StackPanel Orientation="Horizontal"><TextBlock Text="◆" FontSize="9" Foreground="#1E3A8A" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="MAX STOCK" FontSize="10" FontWeight="SemiBold" Foreground="#1E3A8A"/></StackPanel></Border>
+                            <Border Style="{StaticResource Badge}" Background="#EDE9FE" BorderBrush="#C4B5FD" Visibility="{Binding IsAlternate, Converter={StaticResource BoolToVis}}"><StackPanel Orientation="Horizontal"><TextBlock Text="▲" FontSize="9" Foreground="#5B21B6" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="ALTERNATE" FontSize="10" FontWeight="SemiBold" Foreground="#5B21B6"/></StackPanel></Border>
+                        </WrapPanel>
+                        <StackPanel Visibility="{Binding IsListing, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Margin="0,2,0,0">
+                                <Run Text="Vendor P/N  " Foreground="{StaticResource InkMuted}" FontSize="11"/>
+                                <Run Text="{Binding Sku, Mode=OneWay}" FontFamily="Cascadia Mono, Consolas" FontSize="13" FontWeight="SemiBold"/>
+                            </TextBlock>
+                            <TextBlock Text="{Binding PartLine}" Style="{StaticResource Muted}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"/>
+                            <TextBlock Text="{Binding AlternateText}" FontSize="11" Foreground="{StaticResource Warn}" Margin="0,2,0,0" TextWrapping="Wrap"
+                                       Visibility="{Binding AlternateText, Converter={StaticResource NonEmptyToVis}}"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Stock -->
+                    <StackPanel Grid.Column="1" Margin="0,0,8,0" Visibility="{Binding IsListing, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="{Binding StockText}" FontWeight="SemiBold"/>
+                        <Border Style="{StaticResource Chip}" HorizontalAlignment="Left" Background="{Binding ChipBack}" Margin="0,4,0,0">
+                            <TextBlock Text="{Binding AvailabilityDisplay}" FontSize="11" FontWeight="SemiBold" Foreground="{Binding ChipFore}"/>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Unit price -->
+                    <StackPanel Grid.Column="2" Margin="0,0,8,0" Visibility="{Binding IsListing, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="{Binding UnitPriceText}" FontFamily="Cascadia Mono, Consolas" FontSize="14" FontWeight="Bold"/>
+                        <TextBlock Text="{Binding BasePriceText}" Style="{StaticResource Muted}" FontSize="11" Margin="0,2,0,0"/>
+                        <TextBlock Text="Order minimum applied" FontSize="11" Foreground="{StaticResource Warn}" Margin="0,2,0,0"
+                                   Visibility="{Binding RaisedToMinimum, Converter={StaticResource BoolToVis}}"/>
+                    </StackPanel>
+
+                    <!-- Order total -->
+                    <StackPanel Grid.Column="3" Margin="0,0,8,0" Visibility="{Binding IsListing, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="{Binding TotalText}" FontFamily="Cascadia Mono, Consolas" FontSize="14" FontWeight="Bold"/>
+                        <TextBlock Text="{Binding PremiumText}" Style="{StaticResource Muted}" FontSize="11" Margin="0,2,0,0"
+                                   Visibility="{Binding PremiumText, Converter={StaticResource NonEmptyToVis}}"/>
+                    </StackPanel>
+
+                    <!-- Volume savings -->
+                    <StackPanel Grid.Column="4" Margin="0,0,8,0" Visibility="{Binding IsListing, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="{Binding SavingsText}" FontFamily="Cascadia Mono, Consolas" FontWeight="Bold" Foreground="{StaticResource Good}"/>
+                        <TextBlock Text="vs 1 unit" Style="{StaticResource Muted}" FontSize="11" Visibility="{Binding HasSavings, Converter={StaticResource BoolToVis}}"/>
+                    </StackPanel>
+
+                    <!-- Packaging and MOQ -->
+                    <StackPanel Grid.Column="5" Margin="0,0,8,0" Visibility="{Binding IsListing, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="{Binding Packaging}" TextWrapping="Wrap" Visibility="{Binding Packaging, Converter={StaticResource NonEmptyToVis}}"/>
+                        <TextBlock Text="{Binding MoqText}" Style="{StaticResource Muted}" FontSize="11" FontFamily="Cascadia Mono, Consolas" Margin="0,2,0,0"/>
+                    </StackPanel>
+
+                    <!-- Lead time -->
+                    <StackPanel Grid.Column="6" Margin="0,0,8,0" Visibility="{Binding IsListing, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="{Binding LeadText}" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding LeadSub}" Style="{StaticResource Muted}" FontSize="11" Margin="0,2,0,0"
+                                   Visibility="{Binding LeadSub, Converter={StaticResource NonEmptyToVis}}"/>
+                    </StackPanel>
+
+                    <!-- Listing actions -->
+                    <StackPanel Grid.Column="7" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                Visibility="{Binding IsListing, Converter={StaticResource BoolToVis}}">
+                        <Button Content="+ BOM" Style="{StaticResource GhostButton}" Margin="0,0,6,0" ToolTip="Add to BOM"
+                                Command="{Binding DataContext.AddToBomCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
+                                AutomationProperties.Name="Add to BOM"/>
+                        <Button Content="Tiers" Style="{StaticResource GhostButton}" Margin="0,0,6,0" ToolTip="Show price breaks"
+                                Visibility="{Binding HasPricing, Converter={StaticResource BoolToVis}}"
+                                Command="{Binding DataContext.TiersCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
+                                AutomationProperties.Name="Show price breaks"/>
+                        <Button Content="Buy ↗" Style="{StaticResource BuyButton}" ToolTip="Open on vendor website"
+                                Visibility="{Binding HasUrl, Converter={StaticResource BoolToVis}}"
+                                Command="{Binding DataContext.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Url}"
+                                AutomationProperties.Name="Open on vendor website"/>
+                    </StackPanel>
+
+                    <!-- Status row: searching / setup / not found / error / link only -->
+                    <StackPanel Grid.Column="1" Grid.ColumnSpan="6" Orientation="Horizontal" VerticalAlignment="Center"
+                                Visibility="{Binding IsStatusRow, Converter={StaticResource BoolToVis}}">
+                        <Border Style="{StaticResource Chip}" Background="{Binding Vendor.ChipBack}">
+                            <TextBlock Text="{Binding Vendor.StatusDisplay}" FontSize="11" FontWeight="SemiBold" Foreground="{Binding Vendor.ChipFore}"/>
+                        </Border>
+                        <ProgressBar IsIndeterminate="True" Width="90" Height="4" Margin="12,0,0,0" Visibility="{Binding Vendor.IsBusy, Converter={StaticResource BoolToVis}}"/>
+                        <TextBlock Text="{Binding Vendor.Message}" Style="{StaticResource Muted}" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="7" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                Visibility="{Binding IsStatusRow, Converter={StaticResource BoolToVis}}">
+                        <Button Content="Settings" Style="{StaticResource GhostButton}" Margin="0,0,6,0"
+                                Visibility="{Binding Vendor.NeedsSetup, Converter={StaticResource BoolToVis}}"
+                                Command="{Binding DataContext.SettingsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                AutomationProperties.Name="Open settings"/>
+                        <Button Content="Open site ↗" Style="{StaticResource BuyButton}"
+                                Visibility="{Binding Vendor.HasSearchUrl, Converter={StaticResource BoolToVis}}"
+                                Command="{Binding DataContext.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Vendor.SearchUrl}"
+                                AutomationProperties.Name="Open vendor search page"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsBestPrice}" Value="True">
+                    <Setter TargetName="RowBd" Property="Background" Value="{StaticResource GoodSoft}"/>
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <!-- ======================= CARD ======================= -->
+        <DataTemplate x:Key="CardTemplate">
+            <Border x:Name="CardBd" Style="{StaticResource Card}" Width="380" Margin="0,0,12,12" Padding="14">
+                <StackPanel>
+                    <WrapPanel>
+                        <ToggleButton Style="{StaticResource StarToggle}" IsChecked="{Binding Vendor.IsFavorite, Mode=OneWay}" Margin="0,0,4,2"
+                                      Command="{Binding DataContext.ToggleFavoriteCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      CommandParameter="{Binding Vendor}" ToolTip="Star to list this vendor first" AutomationProperties.Name="Favourite vendor"/>
+                        <ContentControl Content="{Binding Vendor}" ContentTemplate="{StaticResource VendorLogoTemplate}" Margin="0,0,6,2"/>
+                        <TextBlock Text="{Binding Vendor.Name}" FontWeight="SemiBold" FontSize="15" VerticalAlignment="Center" Margin="0,0,8,2"/>
+                        <Border Style="{StaticResource Badge}" Background="#CFFAFE" BorderBrush="#67E8F9" Visibility="{Binding IsBestPrice, Converter={StaticResource BoolToVis}}"><StackPanel Orientation="Horizontal"><TextBlock Text="●" FontSize="9" Foreground="#155E75" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="BEST VALUE" FontSize="10" FontWeight="SemiBold" Foreground="#155E75"/></StackPanel></Border>
+                        <Border Style="{StaticResource Badge}" Background="#DBEAFE" BorderBrush="#93C5FD" Visibility="{Binding IsMaxStock, Converter={StaticResource BoolToVis}}"><StackPanel Orientation="Horizontal"><TextBlock Text="◆" FontSize="9" Foreground="#1E3A8A" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="MAX STOCK" FontSize="10" FontWeight="SemiBold" Foreground="#1E3A8A"/></StackPanel></Border>
+                        <Border Style="{StaticResource Badge}" Background="#EDE9FE" BorderBrush="#C4B5FD" Visibility="{Binding IsAlternate, Converter={StaticResource BoolToVis}}"><StackPanel Orientation="Horizontal"><TextBlock Text="▲" FontSize="9" Foreground="#5B21B6" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="ALTERNATE" FontSize="10" FontWeight="SemiBold" Foreground="#5B21B6"/></StackPanel></Border>
+                    </WrapPanel>
+
+                    <!-- Listing -->
+                    <StackPanel Visibility="{Binding IsListing, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Margin="0,4,0,0">
+                            <Run Text="Vendor P/N  " Foreground="{StaticResource InkMuted}" FontSize="11"/>
+                            <Run Text="{Binding Sku, Mode=OneWay}" FontFamily="Cascadia Mono, Consolas" FontSize="13" FontWeight="SemiBold"/>
+                        </TextBlock>
+                        <TextBlock Text="{Binding PartLine}" Style="{StaticResource Muted}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"/>
+                        <TextBlock Text="{Binding AlternateText}" FontSize="11" Foreground="{StaticResource Warn}" Margin="0,4,0,0" TextWrapping="Wrap"
+                                   Visibility="{Binding AlternateText, Converter={StaticResource NonEmptyToVis}}"/>
+
+                        <Grid Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Style="{StaticResource Chip}" HorizontalAlignment="Left" Background="{Binding ChipBack}">
+                                <TextBlock Text="{Binding AvailabilityDisplay}" FontSize="12" FontWeight="SemiBold" Foreground="{Binding ChipFore}"/>
+                            </Border>
+                            <TextBlock Grid.Column="1" Text="{Binding StockText}" FontFamily="Cascadia Mono, Consolas" FontWeight="Bold" VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <Border Background="{StaticResource SurfaceAlt}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,10,0,0"
+                                Visibility="{Binding HasPricing, Converter={StaticResource BoolToVis}}">
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Unit price" Style="{StaticResource Muted}" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding UnitPriceText}" FontFamily="Cascadia Mono, Consolas" FontSize="20" FontWeight="Bold"/>
+                                </Grid>
+                                <Grid Margin="0,6,0,0">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Order total" Style="{StaticResource Muted}" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding TotalText}" FontFamily="Cascadia Mono, Consolas" FontSize="14" FontWeight="Bold"/>
+                                </Grid>
+                                <TextBlock Text="{Binding OrderNote}" Style="{StaticResource Muted}" FontSize="11" Margin="0,6,0,0"/>
+                                <TextBlock Text="{Binding PremiumText}" Style="{StaticResource Muted}" FontSize="11" Margin="0,2,0,0"
+                                           Visibility="{Binding PremiumText, Converter={StaticResource NonEmptyToVis}}"/>
+                                <TextBlock Text="{Binding SavingsNote}" FontSize="11" Foreground="{StaticResource Good}" Margin="0,2,0,0"
+                                           Visibility="{Binding HasSavings, Converter={StaticResource BoolToVis}}"/>
+                            </StackPanel>
+                        </Border>
+                        <TextBlock Text="No pricing returned for this listing." Style="{StaticResource Muted}" Margin="0,10,0,0"
+                                   Visibility="{Binding HasPricing, Converter={StaticResource InvBoolToVis}}"/>
+
+                        <Grid Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="90"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                            <TextBlock Text="Packaging" Style="{StaticResource Muted}"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Packaging}" TextWrapping="Wrap"/>
+                            <TextBlock Grid.Row="1" Text="Order rules" Style="{StaticResource Muted}" Margin="0,3,0,0"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding MoqText}" FontFamily="Cascadia Mono, Consolas" FontSize="12" Margin="0,3,0,0"/>
+                            <TextBlock Grid.Row="2" Text="Lead time" Style="{StaticResource Muted}" Margin="0,3,0,0"/>
+                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding LeadText}" Margin="0,3,0,0" TextWrapping="Wrap"/>
+                        </Grid>
+
+                        <ToggleButton Content="{Binding TiersToggleText}" Style="{StaticResource FilterChip}" HorizontalAlignment="Stretch" Margin="0,10,0,0"
+                                      IsChecked="{Binding ShowTiers, Mode=TwoWay}" Visibility="{Binding HasPricing, Converter={StaticResource BoolToVis}}"
+                                      AutomationProperties.Name="Show or hide price breaks"/>
+                        <ItemsControl ItemsSource="{Binding Tiers}" Margin="0,6,0,0" Visibility="{Binding ShowTiers, Converter={StaticResource BoolToVis}}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border x:Name="TierBd" Padding="6,3" CornerRadius="3">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding Quantity}" FontFamily="Cascadia Mono, Consolas" FontSize="12"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding UnitPrice}" FontFamily="Cascadia Mono, Consolas" FontSize="12"/>
+                                            <TextBlock Grid.Column="2" Text="{Binding Extended}" FontFamily="Cascadia Mono, Consolas" FontSize="12" HorizontalAlignment="Right" Foreground="{StaticResource InkMuted}"/>
+                                        </Grid>
+                                    </Border>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                                            <Setter TargetName="TierBd" Property="Background" Value="{StaticResource AccentSoft}"/>
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <Grid Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <Button Content="+ Stage in BOM" Style="{StaticResource GhostButton}" MinHeight="32"
+                                    Command="{Binding DataContext.AddToBomCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
+                                    AutomationProperties.Name="Add to BOM"/>
+                            <Button Grid.Column="2" Content="Buy ↗" Style="{StaticResource PrimaryButton}" MinHeight="32"
+                                    Visibility="{Binding HasUrl, Converter={StaticResource BoolToVis}}"
+                                    Command="{Binding DataContext.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Url}"
+                                    AutomationProperties.Name="Open on vendor website"/>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- Status -->
+                    <StackPanel Visibility="{Binding IsStatusRow, Converter={StaticResource BoolToVis}}" Margin="0,8,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Style="{StaticResource Chip}" Background="{Binding Vendor.ChipBack}">
+                                <TextBlock Text="{Binding Vendor.StatusDisplay}" FontSize="11" FontWeight="SemiBold" Foreground="{Binding Vendor.ChipFore}"/>
+                            </Border>
+                            <ProgressBar IsIndeterminate="True" Width="90" Height="4" Margin="12,0,0,0" Visibility="{Binding Vendor.IsBusy, Converter={StaticResource BoolToVis}}"/>
+                        </StackPanel>
+                        <TextBlock Text="{Binding Vendor.Message}" Style="{StaticResource Muted}" Margin="0,8,0,0"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                            <Button Content="Settings" Style="{StaticResource GhostButton}" Margin="0,0,8,0"
+                                    Visibility="{Binding Vendor.NeedsSetup, Converter={StaticResource BoolToVis}}"
+                                    Command="{Binding DataContext.SettingsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    AutomationProperties.Name="Open settings"/>
+                            <Button Content="Open site ↗" Style="{StaticResource PrimaryButton}" MinHeight="32"
+                                    Visibility="{Binding Vendor.HasSearchUrl, Converter={StaticResource BoolToVis}}"
+                                    Command="{Binding DataContext.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Vendor.SearchUrl}"
+                                    AutomationProperties.Name="Open vendor search page"/>
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsBestPrice}" Value="True">
+                    <Setter TargetName="CardBd" Property="BorderBrush" Value="{StaticResource Good}"/>
+                    <Setter TargetName="CardBd" Property="BorderThickness" Value="2"/>
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <!-- ======================= COST CALCULATOR ROW ======================= -->
+        <DataTemplate x:Key="CalcRowTemplate">
+            <Border x:Name="RowBd" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="12,9">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2.2*"/>
+                        <ColumnDefinition Width="1.2*"/>
+                        <ColumnDefinition Width="1.1*"/>
+                        <ColumnDefinition Width="1.3*"/>
+                        <ColumnDefinition Width="0.8*"/>
+                        <ColumnDefinition Width="1.3*"/>
+                        <ColumnDefinition Width="130"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                        <WrapPanel>
+                            <ContentControl Content="{Binding Vendor}" ContentTemplate="{StaticResource VendorLogoTemplate}" Margin="0,0,6,2"/>
+                            <TextBlock Text="{Binding Vendor.Name}" FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center" Margin="0,0,8,2"/>
+                            <Border Style="{StaticResource Badge}" Background="#CFFAFE" BorderBrush="#67E8F9" Visibility="{Binding IsBestPrice, Converter={StaticResource BoolToVis}}"><StackPanel Orientation="Horizontal"><TextBlock Text="●" FontSize="9" Foreground="#155E75" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="BEST PRICE" FontSize="10" FontWeight="SemiBold" Foreground="#155E75"/></StackPanel></Border>
+                            <Border Style="{StaticResource Badge}" Background="#EDE9FE" BorderBrush="#C4B5FD" Visibility="{Binding IsAlternate, Converter={StaticResource BoolToVis}}"><StackPanel Orientation="Horizontal"><TextBlock Text="▲" FontSize="9" Foreground="#5B21B6" Margin="0,0,4,0" VerticalAlignment="Center"/><TextBlock Text="ALTERNATE" FontSize="10" FontWeight="SemiBold" Foreground="#5B21B6"/></StackPanel></Border>
+                        </WrapPanel>
+                        <TextBlock Style="{StaticResource Muted}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis">
+                            <Run Text="Vendor P/N "/><Run Text="{Binding Sku, Mode=OneWay}" FontFamily="Cascadia Mono, Consolas" Foreground="{StaticResource Ink}"/>
+                        </TextBlock>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                        <TextBlock Text="{Binding StockText}" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding AvailabilityDisplay}" FontSize="11" Foreground="{Binding ChipFore}" FontWeight="SemiBold"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Margin="0,0,8,0">
+                        <TextBlock Text="{Binding UnitPriceText}" FontFamily="Cascadia Mono, Consolas" FontSize="14" FontWeight="Bold"/>
+                        <TextBlock Text="{Binding BasePriceText}" Style="{StaticResource Muted}" FontSize="11"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="3" Margin="0,0,8,0">
+                        <TextBlock Text="{Binding TotalText}" FontFamily="Cascadia Mono, Consolas" FontSize="14" FontWeight="Bold"/>
+                        <TextBlock Text="{Binding PremiumText}" Style="{StaticResource Muted}" FontSize="11"
+                                   Visibility="{Binding PremiumText, Converter={StaticResource NonEmptyToVis}}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="4" Margin="0,0,8,0">
+                        <TextBlock Text="{Binding SavingsText}" FontFamily="Cascadia Mono, Consolas" FontWeight="Bold" Foreground="{StaticResource Good}"/>
+                        <TextBlock Text="tier discount" Style="{StaticResource Muted}" FontSize="11" Visibility="{Binding HasSavings, Converter={StaticResource BoolToVis}}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="5" Margin="0,0,8,0">
+                        <TextBlock Text="{Binding LeadText}" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding LeadSub}" Style="{StaticResource Muted}" FontSize="11"
+                                   Visibility="{Binding LeadSub, Converter={StaticResource NonEmptyToVis}}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="6" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+                        <Button Content="+ BOM" Style="{StaticResource GhostButton}" Margin="0,0,6,0"
+                                Command="{Binding DataContext.AddToBomCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
+                                AutomationProperties.Name="Add to BOM"/>
+                        <Button Content="Buy ↗" Style="{StaticResource BuyButton}" Visibility="{Binding HasUrl, Converter={StaticResource BoolToVis}}"
+                                Command="{Binding DataContext.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Url}"
+                                AutomationProperties.Name="Open on vendor website"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsBestPrice}" Value="True">
+                    <Setter TargetName="RowBd" Property="Background" Value="{StaticResource AccentSoft}"/>
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <!-- ======================= PROJECT PART TILE ======================= -->
+        <DataTemplate x:Key="ProjectTileTemplate">
+            <Button Style="{StaticResource TileButton}" Margin="0,0,8,8" MinWidth="170" MaxWidth="270" ToolTip="{Binding ToolTipText}"
+                    AutomationProperties.Name="{Binding Mpn}"
+                    Command="{Binding DataContext.Project.ChooseCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="{Binding Mpn}" FontFamily="Cascadia Mono, Consolas" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding Manufacturer}" Style="{StaticResource Muted}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                    <Border Grid.Column="1" Style="{StaticResource Chip}" Background="{StaticResource AccentSoft}" BorderBrush="{StaticResource Accent}" BorderThickness="1"
+                            Margin="8,0,0,0" Visibility="{Binding HasQty, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="{Binding QtyText}" FontSize="11" FontFamily="Cascadia Mono, Consolas" FontWeight="Bold" Foreground="{StaticResource AccentDark}"/>
+                    </Border>
+                </Grid>
+            </Button>
+        </DataTemplate>
+
+        <!-- ======================= BOM LINE ======================= -->
+        <DataTemplate x:Key="BomLineTemplate">
+            <Border BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="12,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2.2*"/>
+                        <ColumnDefinition Width="1.6*"/>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="1*"/>
+                        <ColumnDefinition Width="1.1*"/>
+                        <ColumnDefinition Width="1.5*"/>
+                        <ColumnDefinition Width="86"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,10,0">
+                        <TextBlock Text="{Binding Mpn}" FontFamily="Cascadia Mono, Consolas" FontWeight="Bold" FontSize="14" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding Manufacturer}" Style="{StaticResource Muted}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding Description}" Style="{StaticResource Muted}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Margin="0,0,10,0">
+                        <StackPanel Orientation="Horizontal">
+                            <ContentControl Content="{Binding}" ContentTemplate="{StaticResource VendorLogoTemplate}" Margin="0,0,6,0"/>
+                            <TextBlock Text="{Binding VendorName}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <TextBlock Text="{Binding Sku}" FontFamily="Cascadia Mono, Consolas" FontSize="12" Margin="0,3,0,0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Margin="0,0,10,0">
+                        <TextBox Text="{Binding QtyText, UpdateSourceTrigger=PropertyChanged}" FontFamily="Cascadia Mono, Consolas" HorizontalContentAlignment="Right" MinHeight="30"
+                                 AutomationProperties.Name="Order quantity"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="3" Margin="0,0,8,0">
+                        <TextBlock Text="{Binding UnitText}" FontFamily="Cascadia Mono, Consolas" FontWeight="Bold"/>
+                        <TextBlock Text="{Binding OrderNote}" Style="{StaticResource Muted}" FontSize="11" Visibility="{Binding OrderNote, Converter={StaticResource NonEmptyToVis}}"/>
+                    </StackPanel>
+                    <TextBlock Grid.Column="4" Text="{Binding TotalText}" FontFamily="Cascadia Mono, Consolas" FontWeight="Bold" Foreground="{StaticResource Good}" Margin="0,0,8,0"/>
+                    <Border Grid.Column="5" Style="{StaticResource Chip}" HorizontalAlignment="Left" VerticalAlignment="Top" Background="{Binding StockBack}">
+                        <TextBlock Text="{Binding StockDisplay}" FontSize="11" FontWeight="SemiBold" Foreground="{Binding StockFore}"/>
+                    </Border>
+                    <StackPanel Grid.Column="6" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+                        <Button Content="↗" Style="{StaticResource IconButton}" ToolTip="Open on vendor website" Visibility="{Binding HasUrl, Converter={StaticResource BoolToVis}}"
+                                Command="{Binding DataContext.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Url}"
+                                AutomationProperties.Name="Open on vendor website"/>
+                        <Button Content="✕" Style="{StaticResource IconButton}" ToolTip="Remove from BOM"
+                                Command="{Binding DataContext.RemoveBomCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
+                                AutomationProperties.Name="Remove from BOM"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+        <!-- ======================= MATRIX CELL / ROW ======================= -->
+        <DataTemplate x:Key="MatrixCellTemplate">
+            <TextBlock Text="{Binding Text}" FontFamily="Cascadia Mono, Consolas" FontSize="12" HorizontalAlignment="Right" Margin="0,0,10,0">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Foreground" Value="{StaticResource InkMuted}"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsBest}" Value="True">
+                                <Setter Property="FontWeight" Value="Bold"/>
+                                <Setter Property="Foreground" Value="{StaticResource Good}"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+        </DataTemplate>
+
+        <DataTemplate x:Key="MatrixHeaderTemplate">
+            <TextBlock Text="{Binding}" Style="{StaticResource TH}" HorizontalAlignment="Right" Margin="0,0,10,0"/>
+        </DataTemplate>
+
+        <DataTemplate x:Key="MatrixRowTemplate">
+            <Border BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="12,8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="210"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Orientation="Horizontal">
+                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource VendorLogoTemplate}" Margin="0,0,8,0"/>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Vendor}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="170"/>
+                            <TextBlock Text="{Binding Detail}" FontFamily="Cascadia Mono, Consolas" FontSize="11" Foreground="{StaticResource InkMuted}" TextTrimming="CharacterEllipsis" MaxWidth="170"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <ItemsControl Grid.Column="1" ItemsSource="{Binding Cells}" ItemTemplate="{StaticResource MatrixCellTemplate}" VerticalAlignment="Center">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><UniformGrid Rows="1"/></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+        <!-- Legend toggle for one chart series. -->
+        <DataTemplate x:Key="LegendTemplate">
+            <ToggleButton Style="{StaticResource FilterChip}" IsChecked="{Binding IsVisible, Mode=TwoWay}" Margin="0,2,8,2" MinHeight="26"
+                          AutomationProperties.Name="Show or hide this price curve">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding MarkerGlyph}" Foreground="{Binding Brush}" FontSize="13" FontFamily="Segoe UI Symbol" Margin="0,0,7,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding Name}" FontSize="12" VerticalAlignment="Center"/>
+                </StackPanel>
+            </ToggleButton>
+        </DataTemplate>
+
+        <!-- Vendor chip in the live status bar. -->
+        <DataTemplate x:Key="VendorChipTemplate">
+            <ToggleButton Style="{StaticResource FilterChip}" Margin="0,2,8,2" IsChecked="{Binding IsSelected, Mode=OneWay}" ToolTip="{Binding ToolTipText}"
+                          Command="{Binding DataContext.FilterVendorCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
+                          AutomationProperties.Name="{Binding Name}">
+                <StackPanel Orientation="Horizontal">
+                    <ContentControl Content="{Binding}" ContentTemplate="{StaticResource VendorLogoTemplate}" Margin="0,0,7,0"/>
+                    <TextBlock Text="{Binding Glyph}" Foreground="{Binding ChipFore}" FontWeight="SemiBold" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding ChipSummary}" Style="{StaticResource Muted}" TextWrapping="NoWrap" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding LatencyText}" Style="{StaticResource Muted}" TextWrapping="NoWrap" FontFamily="Cascadia Mono, Consolas" FontSize="11" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
+            </ToggleButton>
+        </DataTemplate>
+
+        <!-- Recent part chip. -->
+        <DataTemplate x:Key="RecentChipTemplate">
+            <Button Content="{Binding}" Style="{StaticResource ChipButton}" FontFamily="Cascadia Mono, Consolas" Margin="0,2,6,2"
+                    Command="{Binding DataContext.SearchPartCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
+                    AutomationProperties.Name="Search this part again"/>
+        </DataTemplate>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- ============================ Header (SWEETs light header bar): tool · tabs · settings ============================ -->
+        <Border Grid.Row="0" Style="{StaticResource Header.Bar}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Image Style="{StaticResource Header.Icon}" Source="pack://application:,,,/VendorGrid;component/Resources/VendorGrid.png"
+                           AutomationProperties.Name="VendorGrid logo"/>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource Header.Overline}" Text="SWEETs · Export Tools"/>
+                        <TextBlock Style="{StaticResource Header.Title}" Text="VendorGrid"/>
+                        <TextBlock Style="{StaticResource Header.Subtitle}" Text="Part sourcing for SOLIDWORKS Electrical"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Tabs reach the bar's top and bottom edges so the selected tab's underline sits on the bar's line. -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="28,-14,0,-14">
+                    <RadioButton Style="{StaticResource NavTab}" Content="Sourcing dashboard" IsChecked="{Binding IsSourcingTab, Mode=TwoWay}"
+                                 AutomationProperties.Name="Sourcing dashboard"/>
+                    <RadioButton Style="{StaticResource NavTab}" Content="Cost curve &amp; tiers" IsChecked="{Binding IsCurveTab, Mode=TwoWay}"
+                                 AutomationProperties.Name="Cost curve &amp; tiers"/>
+                    <RadioButton Style="{StaticResource NavTab}" Content="{Binding BomTabText}" IsChecked="{Binding IsBomTab, Mode=TwoWay}"
+                                 AutomationProperties.Name="{Binding BomTabText}"/>
+                </StackPanel>
+
+                <Button Grid.Column="2" Content="Settings" Style="{StaticResource HeaderButton}" VerticalAlignment="Center"
+                        Command="{Binding SettingsCommand}" AutomationProperties.Name="Open settings" ToolTip="Vendors and their API keys, language and region"/>
+            </Grid>
+        </Border>
+
+        <!-- ============================ Search bar ============================ -->
+        <Border Grid.Row="1" Background="{StaticResource Surface}" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="16,12,16,10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="150"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Manufacturer part number" Style="{StaticResource Label}"/>
+                <TextBlock Grid.Row="0" Grid.Column="1" Text="Quantity" Style="{StaticResource Label}" Margin="10,0,0,4"/>
+
+                <Grid Grid.Row="1" Grid.Column="0">
+                    <TextBox x:Name="PartBox" Text="{Binding PartNumber, UpdateSourceTrigger=PropertyChanged}" FontFamily="Cascadia Mono, Consolas" FontSize="15"
+                             Padding="8,6,36,6" AutomationProperties.Name="Manufacturer part number">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Return" Command="{Binding SearchCommand}"/>
+                        </TextBox.InputBindings>
+                    </TextBox>
+                    <TextBlock Text="e.g. 1N4148W-7-F  ·  or pick a part from your project below" Margin="11,0,0,0" IsHitTestVisible="False" VerticalAlignment="Center"
+                               Foreground="{StaticResource InkMuted}" FontSize="13">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Text, ElementName=PartBox}" Value="">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <Button Content="✕" Style="{StaticResource IconButton}" Width="26" Height="26" HorizontalAlignment="Right" Margin="0,0,4,0"
+                            Command="{Binding ClearPartCommand}" Visibility="{Binding HasPartText, Converter={StaticResource BoolToVis}}"
+                            ToolTip="Clear" AutomationProperties.Name="Clear part number"/>
+                </Grid>
+
+                <TextBox Grid.Row="1" Grid.Column="1" Margin="10,0,0,0" Text="{Binding QuantityText, UpdateSourceTrigger=PropertyChanged}"
+                         FontFamily="Cascadia Mono, Consolas" FontSize="15" HorizontalContentAlignment="Right" AutomationProperties.Name="Order quantity">
+                    <TextBox.InputBindings>
+                        <KeyBinding Key="Return" Command="{Binding SearchCommand}"/>
+                    </TextBox.InputBindings>
+                </TextBox>
+
+                <Button Grid.Row="1" Grid.Column="2" Margin="10,0,0,0" Content="Search  ▸" Style="{StaticResource PrimaryButton}" MinWidth="110"
+                        Command="{Binding SearchCommand}" AutomationProperties.Name="Search for part number"/>
+                <Button Grid.Row="1" Grid.Column="3" Margin="8,0,0,0" Content="Cancel" Style="{StaticResource GhostButton}" MinHeight="34"
+                        Command="{Binding CancelCommand}" AutomationProperties.Name="Cancel search"/>
+
+                <StackPanel Grid.Row="2" Grid.ColumnSpan="4" Orientation="Horizontal" Margin="0,10,0,0">
+                    <TextBlock Text="QUICK QUANTITY" Style="{StaticResource TH}" Margin="0,0,10,0"/>
+                    <ItemsControl ItemsSource="{Binding Presets}" ItemTemplate="{StaticResource PresetTemplate}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                </StackPanel>
+
+                <Grid Grid.Row="3" Grid.ColumnSpan="4" Margin="0,8,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <ProgressBar Height="4" Minimum="0" Maximum="{Binding ProgressTotal}" Value="{Binding ProgressDone}"
+                                 Foreground="{StaticResource Accent}" Background="{StaticResource SurfaceAlt}" BorderThickness="0"
+                                 Visibility="{Binding IsSearching, Converter={StaticResource BoolToVis}}" AutomationProperties.Name="Search progress"/>
+                    <TextBlock Grid.Row="1" Text="{Binding Status}" Style="{StaticResource Muted}" Margin="0,6,0,0" AutomationProperties.LiveSetting="Polite"/>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- ============================ Content ============================ -->
+        <ScrollViewer x:Name="MainScroll" Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="16,14,16,20">
+
+                <!-- Recently searched parts -->
+                <Grid Margin="0,0,0,10" Visibility="{Binding HasRecent, Converter={StaticResource BoolToVis}}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="RECENT" Style="{StaticResource TH}" Margin="0,0,10,0"/>
+                    <ItemsControl Grid.Column="1" ItemsSource="{Binding Recent}" ItemTemplate="{StaticResource RecentChipTemplate}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                    <Button Grid.Column="2" Content="Clear history" Style="{StaticResource LinkButton}" VerticalAlignment="Center" Margin="12,0,0,0"
+                            Command="{Binding ClearRecentCommand}" AutomationProperties.Name="Clear search history"/>
+                </Grid>
+
+                <!-- SOLIDWORKS Electrical project parts (priority flow) -->
+                <Border Style="{StaticResource Card}" Padding="14,10" Margin="0,0,0,12"
+                        Visibility="{Binding Project.HostAvailable, Converter={StaticResource BoolToVis}}"
+                        AutomationProperties.Name="SOLIDWORKS Electrical project parts">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="PROJECT PARTS" Style="{StaticResource TH}" Margin="0,0,10,0"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Project.Title}" Style="{StaticResource H2}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="360"/>
+                            <Border Grid.Column="2" Style="{StaticResource Chip}" Background="{StaticResource AccentSoft}" Margin="10,0,0,0"
+                                    Visibility="{Binding Project.CountText, Converter={StaticResource NonEmptyToVis}}">
+                                <TextBlock Text="{Binding Project.CountText}" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource AccentDark}"/>
+                            </Border>
+                            <ComboBox Grid.Column="4" MinWidth="220" MaxWidth="320" Margin="0,0,8,0" MinHeight="30" Padding="8,2"
+                                      ItemsSource="{Binding Project.Projects}" DisplayMemberPath="Display" SelectedItem="{Binding Project.SelectedProject, Mode=TwoWay}"
+                                      Visibility="{Binding Project.HasMultipleProjects, Converter={StaticResource BoolToVis}}"
+                                      AutomationProperties.Name="Open project"/>
+                            <Button Grid.Column="5" Content="⟳" Style="{StaticResource IconButton}" Command="{Binding Project.RefreshCommand}"
+                                    ToolTip="Reload project parts" AutomationProperties.Name="Reload project parts"/>
+                            <Button Grid.Column="6" Content="{Binding Project.ToggleGlyph}" Style="{StaticResource IconButton}" Command="{Binding Project.ToggleCommand}"
+                                    ToolTip="Show or hide project parts" AutomationProperties.Name="Show or hide project parts"/>
+                        </Grid>
+
+                        <StackPanel Margin="0,8,0,0" Visibility="{Binding Project.ShowParts, Converter={StaticResource BoolToVis}}">
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="260"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid>
+                                    <TextBox x:Name="ProjectFilterBox" Text="{Binding Project.Filter, UpdateSourceTrigger=PropertyChanged}" MinHeight="30" Padding="8,3"
+                                             AutomationProperties.Name="Filter project parts"/>
+                                    <TextBlock Text="Filter by part, maker or description" Margin="11,0,0,0" IsHitTestVisible="False" VerticalAlignment="Center"
+                                               Foreground="{StaticResource InkMuted}" FontSize="12">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Text, ElementName=ProjectFilterBox}" Value="">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Grid>
+                                <TextBlock Grid.Column="1" Text="Click a part to search it. Quantities are the number of components that use it." Style="{StaticResource Muted}"
+                                           Margin="14,0,0,0" VerticalAlignment="Center"/>
+                            </Grid>
+                            <ScrollViewer x:Name="ProjectScroll" MaxHeight="148" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                          PreviewMouseWheel="InnerScroll_PreviewMouseWheel">
+                                <ItemsControl ItemsSource="{Binding Project.Parts}" ItemTemplate="{StaticResource ProjectTileTemplate}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                            </ScrollViewer>
+                            <TextBlock Text="{Binding Project.Message}" Style="{StaticResource Muted}" Margin="0,4,0,0"
+                                       Visibility="{Binding Project.Message, Converter={StaticResource NonEmptyToVis}}"/>
+                        </StackPanel>
+
+                        <TextBlock Text="{Binding Project.Message}" Style="{StaticResource Muted}" Margin="0,8,0,0"
+                                   Visibility="{Binding Project.ShowEmpty, Converter={StaticResource BoolToVis}}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Everything except the BOM tab -->
+                <StackPanel Visibility="{Binding IsBomTab, Converter={StaticResource InvBoolToVis}}">
+
+                    <!-- First-run / empty state -->
+                    <Border Style="{StaticResource Card}" Padding="32" Margin="0,0,0,12" Visibility="{Binding ShowEmptyState, Converter={StaticResource BoolToVis}}">
+                        <StackPanel HorizontalAlignment="Center" MaxWidth="520">
+                            <TextBlock Text="Compare vendors in one search" Style="{StaticResource H1}" HorizontalAlignment="Center"/>
+                            <TextBlock Margin="0,8,0,0" TextAlignment="Center" Style="{StaticResource Muted}"
+                                       Text="Enter a manufacturer part number and a quantity, or click a part from your open SOLIDWORKS Electrical project. VendorGrid queries every enabled vendor at once and shows availability, vendor SKU and cost per quantity as each answer arrives."/>
+                            <TextBlock Margin="0,12,0,0" TextAlignment="Center" Style="{StaticResource Muted}"
+                                       Text="First time? Open Settings › Vendors and select Mouser, Digi-Key or Newark to enter your API keys."/>
+                            <Button Content="Open settings" Style="{StaticResource GhostButton}" HorizontalAlignment="Center" Margin="0,14,0,0" MinHeight="32"
+                                    Command="{Binding SettingsCommand}" AutomationProperties.Name="Open settings"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Live vendor status bar -->
+                    <Border Style="{StaticResource Card}" Padding="12,8" Margin="0,0,0,12" Visibility="{Binding StatusBarVisible, Converter={StaticResource BoolToVis}}"
+                            AutomationProperties.Name="Live vendor status">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="LIVE STATUS" Style="{StaticResource TH}" Margin="0,0,12,0"/>
+                            <ToggleButton Grid.Column="1" Content="{Binding AllVendorsText}" Style="{StaticResource FilterChip}" Margin="0,2,8,2"
+                                          IsChecked="{Binding AllSelected, Mode=OneWay}" Command="{Binding ClearFilterCommand}"
+                                          AutomationProperties.Name="Show all vendors"/>
+                            <ItemsControl Grid.Column="2" ItemsSource="{Binding Vendors}" ItemTemplate="{StaticResource VendorChipTemplate}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+                        </Grid>
+                    </Border>
+
+                    <!-- ===================== TAB: Sourcing dashboard ===================== -->
+                    <StackPanel Visibility="{Binding IsSourcingTab, Converter={StaticResource BoolToVis}}">
+
+                        <!-- Part overview -->
+                        <Border Style="{StaticResource Card}" Margin="0,0,0,12" Visibility="{Binding HasOverview, Converter={StaticResource BoolToVis}}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Border Width="92" Height="92" Background="{StaticResource SurfaceAlt}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="6" Margin="0,0,16,0" VerticalAlignment="Top">
+                                    <Grid>
+                                        <TextBlock Text="▦" FontSize="34" Foreground="{StaticResource LineStrong}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        <Image Source="{Binding Overview.ImageUrl}" Stretch="Uniform" Margin="4" RenderOptions.BitmapScalingMode="HighQuality"
+                                               Visibility="{Binding Overview.HasImage, Converter={StaticResource BoolToVis}}" AutomationProperties.Name="Part photo"/>
+                                    </Grid>
+                                </Border>
+
+                                <StackPanel Grid.Column="1">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Overview.Mpn}" FontFamily="Cascadia Mono, Consolas" FontSize="20" FontWeight="Bold" VerticalAlignment="Center"/>
+                                        <Button Content="⧉" Style="{StaticResource IconButton}" Margin="6,0,0,0" ToolTip="Copy part number"
+                                                Command="{Binding CopyCommand}" CommandParameter="{Binding Overview.Mpn}" AutomationProperties.Name="Copy part number"/>
+                                    </StackPanel>
+                                    <WrapPanel Margin="0,2,0,0">
+                                        <TextBlock Text="{Binding Overview.Manufacturer}" Style="{StaticResource H2}" Margin="0,0,10,4" VerticalAlignment="Center"/>
+                                        <Border Style="{StaticResource Chip}" Background="{Binding Overview.LifecycleBack}" Margin="0,0,6,4"
+                                                Visibility="{Binding Overview.HasLifecycle, Converter={StaticResource BoolToVis}}">
+                                            <TextBlock Text="{Binding Overview.LifecycleDisplay}" FontSize="11" FontWeight="SemiBold" Foreground="{Binding Overview.LifecycleFore}"/>
+                                        </Border>
+                                        <Border Style="{StaticResource Chip}" Background="{StaticResource SurfaceAlt}" Margin="0,0,6,4" Visibility="{Binding Overview.HasRoHS, Converter={StaticResource BoolToVis}}">
+                                            <TextBlock Text="{Binding Overview.RoHS}" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Ink}"/>
+                                        </Border>
+                                        <Border Style="{StaticResource Chip}" Background="{StaticResource SurfaceAlt}" Margin="0,0,6,4" Visibility="{Binding Overview.HasCategory, Converter={StaticResource BoolToVis}}">
+                                            <TextBlock Text="{Binding Overview.Category}" FontSize="11" Foreground="{StaticResource Ink}"/>
+                                        </Border>
+                                    </WrapPanel>
+                                    <TextBlock Text="{Binding Overview.Description}" Style="{StaticResource Muted}" FontSize="13" Margin="0,2,0,0"/>
+                                    <TextBlock Text="{Binding Overview.AlternateNote}" Foreground="{StaticResource Warn}" FontSize="12" Margin="0,6,0,0" TextWrapping="Wrap"
+                                               Visibility="{Binding Overview.AlternateNote, Converter={StaticResource NonEmptyToVis}}"/>
+                                </StackPanel>
+
+                                <Button Grid.Column="2" Content="Datasheet ↗" Style="{StaticResource GhostButton}" VerticalAlignment="Top" Margin="12,0,0,0"
+                                        Visibility="{Binding Overview.HasDatasheet, Converter={StaticResource BoolToVis}}"
+                                        Command="{Binding OpenUrlCommand}" CommandParameter="{Binding Overview.DatasheetUrl}" AutomationProperties.Name="Open datasheet"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- KPI strip -->
+                        <UniformGrid Columns="4" Margin="0,0,0,12" Visibility="{Binding HasResults, Converter={StaticResource BoolToVis}}">
+                            <Border Style="{StaticResource Card}" Padding="14" Margin="0,0,6,0">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding KpiPriceTitle}" Style="{StaticResource TH}"/>
+                                    <TextBlock Text="{Binding KpiPrice}" FontFamily="Cascadia Mono, Consolas" FontWeight="Bold" FontSize="22" Margin="0,4,0,0" Foreground="{StaticResource Good}"/>
+                                    <TextBlock Text="{Binding KpiPriceSub}" Style="{StaticResource Muted}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource Card}" Padding="14" Margin="6,0,6,0">
+                                <StackPanel>
+                                    <TextBlock Text="COMBINED READY STOCK" Style="{StaticResource TH}"/>
+                                    <TextBlock Text="{Binding KpiStock}" FontFamily="Cascadia Mono, Consolas" FontWeight="Bold" FontSize="22" Margin="0,4,0,0"/>
+                                    <TextBlock Text="{Binding KpiStockSub}" Style="{StaticResource Muted}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource Card}" Padding="14" Margin="6,0,6,0">
+                                <StackPanel>
+                                    <TextBlock Text="MAX VOLUME SAVINGS" Style="{StaticResource TH}"/>
+                                    <TextBlock Text="{Binding KpiSavings}" FontFamily="Cascadia Mono, Consolas" FontWeight="Bold" FontSize="22" Margin="0,4,0,0" Foreground="{StaticResource Good}"/>
+                                    <TextBlock Text="{Binding KpiSavingsSub}" Style="{StaticResource Muted}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource Card}" Padding="14" Margin="6,0,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="SHORTEST LEAD TIME" Style="{StaticResource TH}"/>
+                                    <TextBlock Text="{Binding KpiLead}" FontFamily="Cascadia Mono, Consolas" FontWeight="Bold" FontSize="22" Margin="0,4,0,0"/>
+                                    <TextBlock Text="{Binding KpiLeadSub}" Style="{StaticResource Muted}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </Border>
+                        </UniformGrid>
+
+                        <!-- Results header: title · view toggle · export -->
+                        <Grid Margin="0,4,0,8" Visibility="{Binding HasResults, Converter={StaticResource BoolToVis}}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="{Binding ResultsTitle}" Style="{StaticResource H1}" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding ResultsSubtitle}" Style="{StaticResource Muted}" Margin="0,2,0,0"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <ToggleButton Content="☰  Matrix" Style="{StaticResource FilterChip}" IsChecked="{Binding TableView, Mode=OneWay}" Command="{Binding SetTableViewCommand}"
+                                              MinHeight="30" Margin="0,0,6,0" AutomationProperties.Name="Matrix view"/>
+                                <ToggleButton Content="▦  Cards" Style="{StaticResource FilterChip}" IsChecked="{Binding CardView, Mode=OneWay}" Command="{Binding SetCardViewCommand}"
+                                              MinHeight="30" Margin="0,0,12,0" AutomationProperties.Name="Card view"/>
+                                <Button Content="⭳  Export quote" Style="{StaticResource GhostButton}" MinHeight="30" Command="{Binding ExportQuoteCommand}"
+                                        AutomationProperties.Name="Export quote"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Matrix (table) view -->
+                        <Border Style="{StaticResource Card}" Padding="0" Margin="0,0,0,12"
+                                Visibility="{Binding HasResults, Converter={StaticResource BoolToVis}}">
+                            <StackPanel>
+                                <StackPanel Visibility="{Binding TableView, Converter={StaticResource BoolToVis}}">
+                                    <Border Background="{StaticResource SurfaceAlt}" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="12,6" CornerRadius="6,6,0,0">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="2.3*"/>
+                                                <ColumnDefinition Width="1.15*"/>
+                                                <ColumnDefinition Width="1.1*"/>
+                                                <ColumnDefinition Width="1.15*"/>
+                                                <ColumnDefinition Width="0.75*"/>
+                                                <ColumnDefinition Width="1.1*"/>
+                                                <ColumnDefinition Width="1.0*"/>
+                                                <ColumnDefinition Width="190"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Button Grid.Column="0" Content="{Binding HeaderVendor}" Style="{StaticResource SortHeader}" Command="{Binding SortCommand}" CommandParameter="vendor" AutomationProperties.Name="Sort by distributor"/>
+                                            <Button Grid.Column="1" Content="{Binding HeaderStock}" Style="{StaticResource SortHeader}" Command="{Binding SortCommand}" CommandParameter="stock" AutomationProperties.Name="Sort by stock"/>
+                                            <Button Grid.Column="2" Content="{Binding HeaderPrice}" Style="{StaticResource SortHeader}" Command="{Binding SortCommand}" CommandParameter="price" AutomationProperties.Name="Sort by unit price"/>
+                                            <Button Grid.Column="3" Content="{Binding HeaderTotal}" Style="{StaticResource SortHeader}" Command="{Binding SortCommand}" CommandParameter="total" AutomationProperties.Name="Sort by order total"/>
+                                            <TextBlock Grid.Column="4" Text="VOL. SAVINGS" Style="{StaticResource TH}" Margin="2,0,0,0"/>
+                                            <TextBlock Grid.Column="5" Text="PACKAGING &amp; MOQ" Style="{StaticResource TH}" Margin="2,0,0,0"/>
+                                            <Button Grid.Column="6" Content="{Binding HeaderLead}" Style="{StaticResource SortHeader}" Command="{Binding SortCommand}" CommandParameter="lead" AutomationProperties.Name="Sort by lead time"/>
+                                            <TextBlock Grid.Column="7" Text="ACTIONS" Style="{StaticResource TH}" HorizontalAlignment="Right" Margin="0,0,2,0"/>
+                                        </Grid>
+                                    </Border>
+                                    <ItemsControl ItemsSource="{Binding RowsView}" ItemTemplate="{StaticResource TableRowTemplate}" AutomationProperties.Name="Vendor results"/>
+                                </StackPanel>
+
+                                <!-- Cards view -->
+                                <ItemsControl ItemsSource="{Binding RowsView}" ItemTemplate="{StaticResource CardTemplate}" Margin="14,14,2,2"
+                                              Visibility="{Binding CardView, Converter={StaticResource BoolToVis}}" AutomationProperties.Name="Vendor result cards">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+
+
+                        <!-- Symbol key: every colour is paired with a shape and a label -->
+                        <WrapPanel Margin="0,0,0,12" Visibility="{Binding HasResults, Converter={StaticResource BoolToVis}}" AutomationProperties.Name="Symbol key">
+                            <TextBlock Text="Symbol key" Style="{StaticResource TH}" Margin="0,0,12,0"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,16,4"><TextBlock Text="●" Foreground="#155E75" Margin="0,0,5,0"/><TextBlock Text="Good / ready" Style="{StaticResource Muted}" TextWrapping="NoWrap"/></StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,16,4"><TextBlock Text="◐" Foreground="#78350F" Margin="0,0,5,0"/><TextBlock Text="Partial / check" Style="{StaticResource Muted}" TextWrapping="NoWrap"/></StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,16,4"><TextBlock Text="▲" Foreground="#5B21B6" Margin="0,0,5,0"/><TextBlock Text="Alternate / uncertain" Style="{StaticResource Muted}" TextWrapping="NoWrap"/></StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,16,4"><TextBlock Text="✕" Foreground="#9D174D" Margin="0,0,5,0"/><TextBlock Text="Out of stock / error" Style="{StaticResource Muted}" TextWrapping="NoWrap"/></StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,16,4"><TextBlock Text="◆" Foreground="#1E3A8A" Margin="0,0,5,0"/><TextBlock Text="Info / link" Style="{StaticResource Muted}" TextWrapping="NoWrap"/></StackPanel>
+                        </WrapPanel>
+
+                        <!-- Cost breakdown calculator -->
+                        <Border Style="{StaticResource Card}" Margin="0,0,0,12" Visibility="{Binding HasListings, Converter={StaticResource BoolToVis}}">
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Button Content="{Binding CalcGlyph}" Style="{StaticResource IconButton}" Command="{Binding ToggleCalcCommand}" Margin="0,0,10,0"
+                                            ToolTip="Collapse or expand costing analysis" AutomationProperties.Name="Collapse or expand costing analysis"/>
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="INTERACTIVE COST BREAKDOWN" Style="{StaticResource TH}"/>
+                                        <TextBlock Text="{Binding CalcTitle}" Style="{StaticResource H1}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Text="User-defined quantity" Style="{StaticResource Muted}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                        <TextBox Text="{Binding QuantityText, UpdateSourceTrigger=PropertyChanged}" Width="110" FontFamily="Cascadia Mono, Consolas" HorizontalContentAlignment="Right"
+                                                 AutomationProperties.Name="User-defined quantity"/>
+                                        <TextBlock Text="pcs" Style="{StaticResource Muted}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- collapsed -->
+                                <Border Background="{StaticResource SurfaceAlt}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="4" Padding="12,8" Margin="0,10,0,0"
+                                        Visibility="{Binding CalcCollapsed, Converter={StaticResource BoolToVis}}">
+                                    <TextBlock Text="{Binding CalcSummary}" FontSize="12"/>
+                                </Border>
+
+                                <!-- expanded -->
+                                <StackPanel Margin="0,10,0,0" Visibility="{Binding CalcExpanded, Converter={StaticResource BoolToVis}}">
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                        <TextBlock Text="QUICK VOLUMES" Style="{StaticResource TH}" Margin="0,0,10,0"/>
+                                        <ItemsControl ItemsSource="{Binding Presets}" ItemTemplate="{StaticResource PresetTemplate}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                    <Border BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="4">
+                                        <StackPanel>
+                                            <Border Background="{StaticResource SurfaceAlt}" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="12,7" CornerRadius="4,4,0,0">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="2.2*"/>
+                                                        <ColumnDefinition Width="1.2*"/>
+                                                        <ColumnDefinition Width="1.1*"/>
+                                                        <ColumnDefinition Width="1.3*"/>
+                                                        <ColumnDefinition Width="0.8*"/>
+                                                        <ColumnDefinition Width="1.3*"/>
+                                                        <ColumnDefinition Width="130"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="DISTRIBUTOR / VENDOR" Style="{StaticResource TH}"/>
+                                                    <TextBlock Grid.Column="1" Text="STOCK READY" Style="{StaticResource TH}"/>
+                                                    <TextBlock Grid.Column="2" Text="{Binding CalcPriceHeader}" Style="{StaticResource TH}"/>
+                                                    <TextBlock Grid.Column="3" Text="EXTENDED TOTAL" Style="{StaticResource TH}"/>
+                                                    <TextBlock Grid.Column="4" Text="SAVINGS" Style="{StaticResource TH}"/>
+                                                    <TextBlock Grid.Column="5" Text="FULFILLMENT" Style="{StaticResource TH}"/>
+                                                    <TextBlock Grid.Column="6" Text="ACTIONS" Style="{StaticResource TH}" HorizontalAlignment="Right"/>
+                                                </Grid>
+                                            </Border>
+                                            <ItemsControl ItemsSource="{Binding CalcView}" ItemTemplate="{StaticResource CalcRowTemplate}" AutomationProperties.Name="Cost comparison at the chosen quantity"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <TextBlock Style="{StaticResource Muted}" Margin="0,8,0,0"
+                                               Text="Totals respect each vendor's minimum order, order multiple and price breaks. Only listings with pricing are compared; alternates are excluded from “best price” when an exact match exists."/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- ===================== TAB: Cost curve & tiers ===================== -->
+                    <StackPanel Visibility="{Binding IsCurveTab, Converter={StaticResource BoolToVis}}">
+                        <Border Style="{StaticResource Card}" Margin="0,0,0,12" Visibility="{Binding Curve.IsEmpty, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Style="{StaticResource Muted}" TextAlignment="Center" Margin="0,16"
+                                       Text="Search a part number to see how its unit price falls with order quantity for every vendor that returned pricing."/>
+                        </Border>
+
+                        <Border Style="{StaticResource Card}" Margin="0,0,0,12" Visibility="{Binding Curve.HasData, Converter={StaticResource BoolToVis}}">
+                            <StackPanel>
+                                <TextBlock Text="Unit price by order quantity" Style="{StaticResource H1}"/>
+                                <TextBlock Text="{Binding Curve.Note}" Style="{StaticResource Muted}" Margin="0,2,0,8"/>
+                                <ItemsControl ItemsSource="{Binding Curve.Series}" ItemTemplate="{StaticResource LegendTemplate}" Margin="0,0,0,8">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                                <Border BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="4">
+                                    <ui:PriceCurveChart Height="340" Series="{Binding Curve.Series}" CurrentQuantity="{Binding Quantity}"
+                                                        QuantityCommand="{Binding QuickQuantityCommand}"
+                                                        AutomationProperties.Name="Chart of unit price against order quantity for each vendor"
+                                                        ToolTip="Hover a point for its price break. Click to use that quantity."/>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource Card}" Padding="0" Margin="0,0,0,12" Visibility="{Binding Curve.HasData, Converter={StaticResource BoolToVis}}">
+                            <StackPanel>
+                                <StackPanel Margin="16,14,16,10">
+                                    <TextBlock Text="Volume discount matrix" Style="{StaticResource H1}"/>
+                                    <TextBlock Style="{StaticResource Muted}" Margin="0,2,0,0"
+                                               Text="Unit price at standard quantities. The lowest price in each column is shown in bold green."/>
+                                </StackPanel>
+                                <Border Background="{StaticResource SurfaceAlt}" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,1" Padding="12,7">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="210"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="DISTRIBUTOR" Style="{StaticResource TH}"/>
+                                        <ItemsControl Grid.Column="1" ItemsSource="{Binding Curve.MatrixHeaders}" ItemTemplate="{StaticResource MatrixHeaderTemplate}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate><UniformGrid Rows="1"/></ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                        </ItemsControl>
+                                    </Grid>
+                                </Border>
+                                <ItemsControl ItemsSource="{Binding Curve.MatrixRows}" ItemTemplate="{StaticResource MatrixRowTemplate}" AutomationProperties.Name="Volume discount matrix"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- ===================== TAB: BOM staging ===================== -->
+                <StackPanel Visibility="{Binding IsBomTab, Converter={StaticResource BoolToVis}}">
+                    <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="BILL OF MATERIALS" Style="{StaticResource TH}"/>
+                                <TextBlock Text="{Binding Bom.TitleText}" Style="{StaticResource H1}"/>
+                                <TextBlock Style="{StaticResource Muted}" Margin="0,2,0,0"
+                                           Text="Stage the listings you want to buy, edit quantities (prices re-quote automatically), then export an Excel purchase list."/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Visibility="{Binding Bom.HasLines, Converter={StaticResource BoolToVis}}">
+                                <Button Content="⭳  Export BOM (Excel)" Style="{StaticResource PrimaryButton}" Command="{Binding ExportBomCommand}" AutomationProperties.Name="Export BOM as Excel workbook"/>
+                                <Button Content="Clear all" Style="{StaticResource GhostButton}" MinHeight="34" Margin="8,0,0,0" Command="{Binding ClearBomCommand}" AutomationProperties.Name="Clear the BOM"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Padding="32" Visibility="{Binding Bom.IsEmpty, Converter={StaticResource BoolToVis}}">
+                        <StackPanel HorizontalAlignment="Center" MaxWidth="460">
+                            <TextBlock Text="No parts staged yet" Style="{StaticResource H1}" HorizontalAlignment="Center"/>
+                            <TextBlock Style="{StaticResource Muted}" TextAlignment="Center" Margin="0,8,0,0"
+                                       Text="Search a part and click “+ BOM” on the vendor you prefer. Staged parts are kept between sessions."/>
+                        </StackPanel>
+                    </Border>
+
+                    <StackPanel Visibility="{Binding Bom.HasLines, Converter={StaticResource BoolToVis}}">
+                        <WrapPanel Margin="0,0,0,4">
+                            <Border Style="{StaticResource Card}" Padding="14" Margin="0,0,12,12" MinWidth="220">
+                                <StackPanel>
+                                    <TextBlock Text="TOTAL PROCUREMENT COST" Style="{StaticResource TH}"/>
+                                    <TextBlock Text="{Binding Bom.TotalText}" FontFamily="Cascadia Mono, Consolas" FontWeight="Bold" FontSize="22" Foreground="{StaticResource Good}" Margin="0,4,0,0"/>
+                                    <TextBlock Text="{Binding Bom.SummaryText}" Style="{StaticResource Muted}" Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </Border>
+                            <ItemsControl ItemsSource="{Binding Bom.VendorTotals}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Style="{StaticResource Card}" Padding="14" Margin="0,0,12,12" MinWidth="180">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Vendor}" Style="{StaticResource TH}"/>
+                                                <TextBlock Text="{Binding Total}" FontFamily="Cascadia Mono, Consolas" FontWeight="Bold" FontSize="20" Margin="0,4,0,0"/>
+                                                <TextBlock Text="{Binding Lines}" Style="{StaticResource Muted}" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </WrapPanel>
+
+                        <Border Style="{StaticResource Card}" Padding="0">
+                            <StackPanel>
+                                <Border Background="{StaticResource SurfaceAlt}" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="12,8" CornerRadius="6,6,0,0">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="2.2*"/>
+                                            <ColumnDefinition Width="1.6*"/>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="1*"/>
+                                            <ColumnDefinition Width="1.1*"/>
+                                            <ColumnDefinition Width="1.5*"/>
+                                            <ColumnDefinition Width="86"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="PART" Style="{StaticResource TH}"/>
+                                        <TextBlock Grid.Column="1" Text="VENDOR / SKU" Style="{StaticResource TH}"/>
+                                        <TextBlock Grid.Column="2" Text="QTY" Style="{StaticResource TH}"/>
+                                        <TextBlock Grid.Column="3" Text="UNIT" Style="{StaticResource TH}"/>
+                                        <TextBlock Grid.Column="4" Text="EXTENDED" Style="{StaticResource TH}"/>
+                                        <TextBlock Grid.Column="5" Text="INVENTORY" Style="{StaticResource TH}"/>
+                                    </Grid>
+                                </Border>
+                                <ItemsControl ItemsSource="{Binding Bom.Lines}" ItemTemplate="{StaticResource BomLineTemplate}" AutomationProperties.Name="Staged BOM lines"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </StackPanel>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Toast -->
+        <Border Grid.Row="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,24,20" Padding="14,10" CornerRadius="6" Background="#111827" MaxWidth="480"
+                Panel.ZIndex="10" Visibility="{Binding HasNotification, Converter={StaticResource BoolToVis}}" AutomationProperties.LiveSetting="Polite">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="●" Foreground="#67E8F9" Margin="0,0,10,0" VerticalAlignment="Top"/>
+                <TextBlock Text="{Binding Notification}" Foreground="White" TextWrapping="Wrap" FontSize="12"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

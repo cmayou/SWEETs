@@ -1,0 +1,14 @@
+* text=auto
+*.cs text eol=crlf
+*.xaml text eol=crlf
+*.csproj text eol=crlf
+*.sln text eol=crlf
+*.ps1 text eol=crlf
+*.iss text eol=crlf
+*.png binary
+*.ico binary
+*.pdf binary
+*.exe binary
+*.dll binary
+*.ewg binary
+*.shx binary

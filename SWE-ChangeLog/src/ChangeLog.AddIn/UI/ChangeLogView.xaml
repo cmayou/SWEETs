@@ -1,0 +1,497 @@
+<UserControl x:Class="ChangeLog.AddIn.UI.ChangeLogView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="clr-namespace:ChangeLog.AddIn.UI.Controls"
+             FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="12"
+             Foreground="#111827" Background="#F5F6F8"
+             SizeChanged="OnSizeChanged"
+             AutomationProperties.Name="Change Log">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/ChangeLog.AddIn;component/UI/Theme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- KPI card -->
+            <Style x:Key="Kpi.Card" TargetType="Border" BasedOn="{StaticResource Card}">
+                <Setter Property="Margin" Value="0,0,8,8"/>
+                <Setter Property="Padding" Value="12,8"/>
+            </Style>
+
+            <DataTemplate x:Key="ChipTemplate">
+                <ToggleButton Style="{StaticResource Chip}" IsChecked="{Binding IsChecked, Mode=TwoWay}"
+                              Content="{Binding Text}" AutomationProperties.Name="{Binding Label}"/>
+            </DataTemplate>
+
+            <ItemsPanelTemplate x:Key="WrapPanelTemplate">
+                <WrapPanel/>
+            </ItemsPanelTemplate>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- ============ Header (SWEETs header bar, pane padding) ============ -->
+        <Border Grid.Row="0" Style="{StaticResource Header.Bar}" Padding="14,10">
+            <DockPanel LastChildFill="True">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Style="{StaticResource Btn.Ghost}" Command="{Binding CompareCommand}" ToolTip="Compare two captures visually" AutomationProperties.Name="Compare captures">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE8A9;" Margin="0,0,6,0"/>
+                            <TextBlock Text="Compare"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource Btn.Ghost}" Command="{Binding CaptureCommand}" ToolTip="Store the current project state for later comparison" AutomationProperties.Name="Capture changes">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE722;" Margin="0,0,6,0"/>
+                            <TextBlock Text="Capture Changes"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource Btn.Primary}" Command="{Binding ExportCommand}" Margin="6,0,0,0" ToolTip="Export the filtered log to Excel" AutomationProperties.Name="Export to Excel">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Text.Icon}" Text="&#xEDE1;" Margin="0,0,6,0"/>
+                            <TextBlock Text="Export .xlsx"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource Btn.Ghost}" Command="{Binding SettingsCommand}" Margin="4,0,0,0" ToolTip="Settings" AutomationProperties.Name="Settings">
+                        <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE713;"/>
+                    </Button>
+                </StackPanel>
+                <Image DockPanel.Dock="Left" Style="{StaticResource Header.Icon}"
+                       Source="pack://application:,,,/ChangeLog.AddIn;component/Resources/changelog_64.png"/>
+                <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
+                    <TextBlock Style="{StaticResource Header.Overline}" Text="SWEETs · Project Tools"/>
+                    <TextBlock Style="{StaticResource Text.H1}" Text="{Binding ProjectName}" TextTrimming="CharacterEllipsis"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                        <Ellipse x:Name="StatusDot" Width="8" Height="8" Margin="0,0,6,0" VerticalAlignment="Center">
+                            <Ellipse.Style>
+                                <Style TargetType="Ellipse">
+                                    <Setter Property="Fill" Value="#B8BDC7"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding StatusKind}" Value="Recording">
+                                            <Setter Property="Fill" Value="{StaticResource Brush.Added}"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding StatusKind}" Value="Indexing">
+                                            <Setter Property="Fill" Value="{StaticResource Brush.Edited}"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding StatusKind}" Value="Failed">
+                                            <Setter Property="Fill" Value="{StaticResource Brush.Removed}"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Ellipse.Style>
+                        </Ellipse>
+                        <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding StatusText}"/>
+                        <TextBlock Style="{StaticResource Text.Caption}" Text="  ·  " Visibility="{Binding StorageText, Converter={StaticResource Conv.Visible}}"/>
+                        <TextBlock Text="{Binding StorageText}" FontSize="11">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding StorageError}" Value="True">
+                                            <Setter Property="Foreground" Value="{StaticResource Brush.Removed}"/>
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- ============ Integrity banner ============ -->
+        <Border Grid.Row="1" Padding="14,6" BorderThickness="0,0,0,1" BorderBrush="{StaticResource Brush.Border}"
+                Visibility="{Binding HasProject, Converter={StaticResource Conv.Visible}}">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Background" Value="{StaticResource Brush.Canvas}"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IntegrityStatus}" Value="Verified">
+                            <Setter Property="Background" Value="{StaticResource Brush.AddedSoft}"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IntegrityStatus}" Value="Warning">
+                            <Setter Property="Background" Value="{StaticResource Brush.EditedSoft}"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IntegrityStatus}" Value="Tampered">
+                            <Setter Property="Background" Value="{StaticResource Brush.RemovedSoft}"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Style="{StaticResource Btn.Ghost}" Command="{Binding VerifyCommand}" Padding="8,2"
+                        Content="Verify now" AutomationProperties.Name="Verify log integrity now"/>
+                <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE72E;" Margin="0,0,8,0"/>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock FontWeight="SemiBold" FontSize="11" Text="{Binding IntegrityText, StringFormat='Log integrity: {0}'}"/>
+                    <ItemsControl ItemsSource="{Binding IntegrityIssues}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock FontSize="11" Foreground="{StaticResource Brush.Muted}" TextWrapping="Wrap" Text="{Binding}"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- ============ KPIs + charts ============ -->
+        <Grid Grid.Row="2" Margin="14,12,6,0" Visibility="{Binding HasProject, Converter={StaticResource Conv.Visible}}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <UniformGrid Grid.Row="0">
+                <UniformGrid.Style>
+                    <Style TargetType="UniformGrid">
+                        <Setter Property="Columns" Value="5"/>
+                        <Setter Property="Rows" Value="1"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsCompact}" Value="True">
+                                <Setter Property="Columns" Value="3"/>
+                                <Setter Property="Rows" Value="2"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </UniformGrid.Style>
+                <Border Style="{StaticResource Kpi.Card}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource Text.Caption}" Text="Changes"/>
+                        <TextBlock Style="{StaticResource Text.Kpi}" Text="{Binding Total, StringFormat=N0}"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Kpi.Card}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource Text.Caption}" Text="Added"/>
+                        <TextBlock Style="{StaticResource Text.Kpi}" Foreground="{StaticResource Brush.Added}" Text="{Binding Added, StringFormat=N0}"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Kpi.Card}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource Text.Caption}" Text="Edited"/>
+                        <TextBlock Style="{StaticResource Text.Kpi}" Foreground="{StaticResource Brush.Edited}" Text="{Binding Edited, StringFormat=N0}"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Kpi.Card}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource Text.Caption}" Text="Removed"/>
+                        <TextBlock Style="{StaticResource Text.Kpi}" Foreground="{StaticResource Brush.Removed}" Text="{Binding Removed, StringFormat=N0}"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Kpi.Card}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource Text.Caption}" Text="Contributors"/>
+                        <TextBlock Style="{StaticResource Text.Kpi}" Text="{Binding Contributors, StringFormat=N0}"/>
+                    </StackPanel>
+                </Border>
+            </UniformGrid>
+
+            <Grid Grid.Row="1" Visibility="{Binding IsCompact, Converter={StaticResource Conv.Collapsed}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="3*"/>
+                    <ColumnDefinition Width="2*"/>
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0" Style="{StaticResource Kpi.Card}">
+                    <DockPanel>
+                        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                <Rectangle Width="8" Height="8" Fill="{StaticResource Brush.Added}" Margin="0,0,4,0"/>
+                                <TextBlock Style="{StaticResource Text.Caption}" Text="Added" Margin="0,0,10,0"/>
+                                <Rectangle Width="8" Height="8" Fill="{StaticResource Brush.Edited}" Margin="0,0,4,0"/>
+                                <TextBlock Style="{StaticResource Text.Caption}" Text="Edited" Margin="0,0,10,0"/>
+                                <Rectangle Width="8" Height="8" Fill="{StaticResource Brush.Removed}" Margin="0,0,4,0"/>
+                                <TextBlock Style="{StaticResource Text.Caption}" Text="Removed"/>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource Text.H2}" Text="Activity · last 14 days"/>
+                        </DockPanel>
+                        <c:DayChart Buckets="{Binding Days}" Height="90" AutomationProperties.Name="Daily change activity chart"/>
+                    </DockPanel>
+                </Border>
+                <Border Grid.Column="1" Style="{StaticResource Kpi.Card}">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Style="{StaticResource Text.H2}" Text="By object type" Margin="0,0,0,6"/>
+                        <ItemsControl ItemsSource="{Binding KindBars}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,1" ToolTip="{Binding Value}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="110"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="44"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding Label}"/>
+                                        <Grid Grid.Column="1" Height="8" VerticalAlignment="Center">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="{Binding Fill}"/>
+                                                <ColumnDefinition Width="{Binding Rest}"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border Background="{StaticResource Brush.Accent}" CornerRadius="2"/>
+                                        </Grid>
+                                        <TextBlock Grid.Column="2" Style="{StaticResource Text.Caption}" TextAlignment="Right" Text="{Binding Value, StringFormat=N0}"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </DockPanel>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- ============ Filters ============ -->
+        <Border Grid.Row="3" Margin="14,0,14,8" Visibility="{Binding HasProject, Converter={StaticResource Conv.Visible}}">
+            <StackPanel>
+                <DockPanel Margin="0,0,0,8">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource Btn.Ghost}" Command="{Binding ClearFiltersCommand}" Content="Clear filters"
+                            Visibility="{Binding HasFilters, Converter={StaticResource Conv.Visible}}"/>
+                    <CheckBox DockPanel.Dock="Right" VerticalAlignment="Center" Margin="10,0" IsChecked="{Binding IncludeReconciled}"
+                              Content="Include inferred" ToolTip="Changes detected on open that were made while the add-in was not recording"/>
+                    <ComboBox DockPanel.Dock="Right" Width="120" Margin="8,0,0,0" ItemsSource="{Binding RangeOptions}" SelectedItem="{Binding Range}"
+                              AutomationProperties.Name="Time range" VerticalContentAlignment="Center"/>
+                    <Grid>
+                        <TextBox x:Name="SearchBox" Style="{StaticResource Input}" Padding="26,4,6,4"
+                                 Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Search changes"/>
+                        <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE721;" Foreground="{StaticResource Brush.Muted}" Margin="8,0,0,0" IsHitTestVisible="False"/>
+                        <TextBlock Text="Search object, page, user or value…" Foreground="{StaticResource Brush.Muted}" Margin="28,0,0,0"
+                                   VerticalAlignment="Center" IsHitTestVisible="False"
+                                   Visibility="{Binding Text, ElementName=SearchBox, Converter={StaticResource Conv.Collapsed}}"/>
+                    </Grid>
+                </DockPanel>
+                <ItemsControl ItemsSource="{Binding ActionChips}" ItemTemplate="{StaticResource ChipTemplate}" ItemsPanel="{StaticResource WrapPanelTemplate}"/>
+                <ItemsControl ItemsSource="{Binding KindChips}" ItemTemplate="{StaticResource ChipTemplate}" ItemsPanel="{StaticResource WrapPanelTemplate}"/>
+                <ItemsControl ItemsSource="{Binding UserChips}" ItemTemplate="{StaticResource ChipTemplate}" ItemsPanel="{StaticResource WrapPanelTemplate}"/>
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Style="{StaticResource Btn.Ghost}" Command="{Binding ClearBatchCommand}" Content="Show all"
+                            Visibility="{Binding BatchFilterText, Converter={StaticResource Conv.Visible}}"/>
+                    <TextBlock Style="{StaticResource Text.Caption}" VerticalAlignment="Center">
+                        <Run Text="{Binding ResultText, Mode=OneWay}"/>
+                        <Run Text="{Binding BatchFilterText, Mode=OneWay}" Foreground="{StaticResource Brush.Accent}"/>
+                    </TextBlock>
+                </DockPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- ============ List + detail ============ -->
+        <Grid Grid.Row="4" Margin="14,0,14,14" Visibility="{Binding HasProject, Converter={StaticResource Conv.Visible}}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Style="{StaticResource Card}" Padding="0">
+                <Grid>
+                    <!-- Wide: data grid -->
+                    <DataGrid x:Name="ChangesGrid" Style="{StaticResource Grid}" ItemsSource="{Binding Rows}" SelectedItem="{Binding Selected, Mode=TwoWay}"
+                              Visibility="{Binding IsCompact, Converter={StaticResource Conv.Collapsed}}" AutomationProperties.Name="Changes">
+                        <DataGrid.RowStyle>
+                            <Style TargetType="DataGridRow" BasedOn="{StaticResource Grid.Row}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsNew}" Value="True">
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsUntrusted}" Value="True">
+                                        <Setter Property="Background" Value="{StaticResource Brush.RemovedSoft}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.RowStyle>
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="When" Width="92" SortMemberPath="Time">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Relative}" ToolTip="{Binding Time}" Foreground="{StaticResource Brush.Muted}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Action" Width="82" SortMemberPath="Action" CellTemplate="{StaticResource ActionPill}"/>
+                            <DataGridTextColumn Header="Type" Binding="{Binding Kind}" Width="110"/>
+                            <DataGridTextColumn Header="Object" Binding="{Binding Object}" Width="2*"/>
+                            <DataGridTextColumn Header="Page" Binding="{Binding Page}" Width="1.3*"/>
+                            <DataGridTemplateColumn Header="User" Width="1.2*" SortMemberPath="User">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{Binding User}" TextTrimming="CharacterEllipsis"/>
+                                            <Border Style="{StaticResource Pill}" Margin="6,0,0,0" Background="{StaticResource Brush.EditedSoft}"
+                                                    Visibility="{Binding IsInferred, Converter={StaticResource Conv.Visible}}"
+                                                    ToolTip="Not observed live; user is a best guess">
+                                                <TextBlock Text="inferred" FontSize="10" Foreground="{StaticResource Brush.Edited}"/>
+                                            </Border>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Changes" Width="3*">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding FieldSummary}" TextTrimming="CharacterEllipsis" ToolTip="{Binding FieldSummary}" Foreground="{StaticResource Brush.Muted}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Integrity" Binding="{Binding Integrity}" Width="84"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- Compact: two-line cards -->
+                    <ListBox ItemsSource="{Binding Rows}" SelectedItem="{Binding Selected, Mode=TwoWay}" BorderThickness="0"
+                             VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             Visibility="{Binding IsCompact, Converter={StaticResource Conv.Visible}}" AutomationProperties.Name="Changes">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                <Setter Property="Padding" Value="10,6"/>
+                                <Setter Property="BorderBrush" Value="{StaticResource Brush.Divider}"/>
+                                <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource ActionPill}" Margin="0,0,8,0" VerticalAlignment="Top"/>
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="{Binding Object}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Style="{StaticResource Text.Caption}">
+                                            <Run Text="{Binding Kind, Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding Page, Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding User, Mode=OneWay}"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="2" Style="{StaticResource Text.Caption}" Text="{Binding Relative}" ToolTip="{Binding Time}" Margin="8,0,0,0"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <!-- Empty state -->
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20"
+                                Visibility="{Binding Rows.Count, Converter={StaticResource Conv.Collapsed}}">
+                        <TextBlock Style="{StaticResource Text.Icon}" FontSize="28" Text="&#xE81C;" HorizontalAlignment="Center" Foreground="{StaticResource Brush.Muted}"/>
+                        <TextBlock Style="{StaticResource Text.H2}" Text="No changes to show" HorizontalAlignment="Center" Margin="0,8,0,2"/>
+                        <TextBlock Style="{StaticResource Text.Caption}" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="320"
+                                   Text="Edits to pages, symbols, wires, cables and parts appear here as you work. Adjust filters if you expected results."/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Detail drawer -->
+            <Border Width="330" Visibility="{Binding HasSelection, Converter={StaticResource Conv.Visible}}">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="12" ShadowDepth="1" Opacity="0.12"/>
+                </Border.Effect>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" DataContext="{Binding Selected}">
+                    <StackPanel>
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Style="{StaticResource Btn.Ghost}" Padding="4"
+                                    Command="{Binding DataContext.CloseDetailCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    AutomationProperties.Name="Close details">
+                                <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE711;" FontSize="11"/>
+                            </Button>
+                            <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource ActionPill}"/>
+                            <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding Kind}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                        </DockPanel>
+                        <TextBlock Style="{StaticResource Text.H1}" Text="{Binding Object}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                        <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding Page, StringFormat='Page {0}'}"/>
+
+                        <TextBlock Style="{StaticResource Text.H2}" Text="What changed" Margin="0,14,0,6"/>
+                        <ItemsControl ItemsSource="{Binding Fields}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="{StaticResource Brush.Divider}" BorderThickness="0,0,0,1" Padding="0,4">
+                                        <StackPanel>
+                                            <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding Field}"/>
+                                            <TextBlock TextWrapping="Wrap">
+                                                <Run Text="{Binding Before, Mode=OneWay}" Foreground="{StaticResource Brush.Removed}" TextDecorations="Strikethrough"/>
+                                                <Run Text="  →  " Foreground="{StaticResource Brush.Muted}"/>
+                                                <Run Text="{Binding After, Mode=OneWay}" Foreground="{StaticResource Brush.Added}" FontWeight="SemiBold"/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock Style="{StaticResource Text.H2}" Text="Who and when" Margin="0,14,0,6"/>
+                        <TextBlock Text="{Binding Time}"/>
+                        <TextBlock Text="{Binding User}" FontWeight="SemiBold"/>
+                        <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding AttributionText}" TextWrapping="Wrap" TextTrimming="None"/>
+
+                        <TextBlock Style="{StaticResource Text.H2}" Text="Integrity" Margin="0,14,0,6"/>
+                        <TextBlock Text="{Binding Integrity}"/>
+                        <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding JournalRef}" TextWrapping="Wrap" TextTrimming="None"/>
+                        <TextBlock Style="{StaticResource Text.Caption}" FontFamily="Consolas" Text="{Binding Hash}"/>
+
+                        <Button Style="{StaticResource Btn}" Margin="0,14,0,0" HorizontalAlignment="Left"
+                                Command="{Binding DataContext.FilterBatchCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                Visibility="{Binding BatchId, Converter={StaticResource Conv.Visible}}"
+                                Content="Show related changes (same operation)"/>
+                    </StackPanel>
+                </ScrollViewer>
+                <Border.Style>
+                    <!-- Layout set via setters (not attributes) so the compact trigger can override it. -->
+                    <Style TargetType="Border" BasedOn="{StaticResource Card}">
+                        <Setter Property="Grid.Column" Value="1"/>
+                        <Setter Property="Margin" Value="10,0,0,0"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsCompact}" Value="True">
+                                <Setter Property="Grid.Column" Value="0"/>
+                                <Setter Property="Grid.ColumnSpan" Value="2"/>
+                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                                <Setter Property="Margin" Value="0"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+            </Border>
+        </Grid>
+
+        <!-- Empty state (no project) -->
+        <StackPanel Grid.Row="2" Grid.RowSpan="3" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="24"
+                    Visibility="{Binding HasProject, Converter={StaticResource Conv.Collapsed}}">
+            <TextBlock Style="{StaticResource Text.H1}" Text="No project open" HorizontalAlignment="Center"/>
+            <TextBlock Style="{StaticResource Text.Caption}" Text="Open a SOLIDWORKS Electrical project. Every change is recorded automatically." Margin="0,6,0,0"/>
+        </StackPanel>
+
+        <!-- Toast -->
+        <Border Grid.Row="0" Grid.RowSpan="5" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="16" Padding="14,10" CornerRadius="6"
+                MaxWidth="560" Visibility="{Binding IsToastVisible, Converter={StaticResource Conv.Visible}}"
+                AutomationProperties.LiveSetting="Assertive">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Background" Value="#1B1F24"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding ToastKind}" Value="Success">
+                            <Setter Property="Background" Value="{StaticResource Brush.Added}"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding ToastKind}" Value="Warning">
+                            <Setter Property="Background" Value="{StaticResource Brush.Edited}"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding ToastKind}" Value="Error">
+                            <Setter Property="Background" Value="{StaticResource Brush.Removed}"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="14" ShadowDepth="2" Opacity="0.25"/>
+            </Border.Effect>
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Style="{StaticResource Btn.Ghost}" Foreground="White" Padding="4,0" Margin="10,0,0,0"
+                        Click="OnDismissToast" AutomationProperties.Name="Dismiss notification">
+                    <TextBlock Style="{StaticResource Text.Icon}" Text="&#xE711;" FontSize="10" Foreground="White"/>
+                </Button>
+                <TextBlock Text="{Binding ToastText}" Foreground="White" TextWrapping="Wrap" VerticalAlignment="Center"/>
+            </DockPanel>
+        </Border>
+    </Grid>
+</UserControl>

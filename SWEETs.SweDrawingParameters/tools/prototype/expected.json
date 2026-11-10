@@ -1,0 +1,111 @@
+{
+ "orig_26.ewg": {
+  "args": {
+   "snap_on": false,
+   "snap": [
+    0.1,
+    0.1
+   ],
+   "grid_on": true,
+   "grid": [
+    0.3,
+    0.3
+   ],
+   "limmin": [
+    -1.5,
+    0
+   ],
+   "limmax": [
+    21.25,
+    13.5
+   ],
+   "ortho": false
+  },
+  "sha256": "cb4503908ec564bf87d50d614431488c819d60906f42715855791c76cbc0f6e3",
+  "src_sha256": "cba845a735083d0909333968771b4a4abce3019fca0bf864e71129bd6fdef281"
+ },
+ "orig_3214.ewg": {
+  "args": {
+   "snap_on": true,
+   "snap": [
+    0.125,
+    0.125
+   ],
+   "grid_on": true,
+   "grid": [
+    0.25,
+    0.25
+   ],
+   "limmin": [
+    0,
+    0
+   ],
+   "limmax": [
+    17,
+    11
+   ],
+   "ortho": false
+  },
+  "sha256": "e270a84ffc6877feca769d85436ca45d05a39ab193cd9bac3f878cf466573ea5",
+  "src_sha256": "b89218d61a581ad1cd4618c879da4e266f5fb1c9a986f3ed0336d807fea67199"
+ },
+ "orig_6672.ewg": {
+  "args": {
+   "snap_on": true,
+   "snap": [
+    0.2,
+    0.2
+   ],
+   "grid_on": true,
+   "grid": [
+    0.4,
+    0.4
+   ],
+   "limmin": [
+    0,
+    0
+   ],
+   "limmax": [
+    34,
+    22
+   ],
+   "ortho": true
+  },
+  "sha256": "37c234738ecc02c0c922c8a1205fa9d590c297edf04050ad740c146fc230766f",
+  "src_sha256": "ad40ebcf988af74b15b33cd09cf9941ead567d119d08b5a498f933868d316e8b"
+ },
+ "orig_default.ewg": {
+  "args": {
+   "snap_on": true,
+   "snap": [
+    0.25,
+    0.25
+   ],
+   "grid_on": false,
+   "grid": [
+    0.5,
+    0.5
+   ]
+  },
+  "sha256": "cf0d0e1c6b7306d5c3470325019875bc807d4535479a233438b3615e356ec5cd",
+  "src_sha256": "d360e088cb5848170d895e7f81235b7c53b8f118b5ac09d524a5b7b8db908783"
+ },
+ "orig_tb.ewg": {
+  "args": {
+   "snap": [
+    2.5,
+    2.5
+   ],
+   "grid": [
+    5,
+    5
+   ],
+   "limmax": [
+    420,
+    297
+   ]
+  },
+  "sha256": "af5fe30284b8a041c3e5b20338b476ca00fed5c27dbd98b9fc6a4738dc026fab",
+  "src_sha256": "869ad3fd7300be2df4457f824e02966844f30dbb66cdf2c28c9f899199156893"
+ }
+}

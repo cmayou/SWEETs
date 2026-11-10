@@ -1,0 +1,147 @@
+﻿<Window x:Class="SWEETs.SwePdfSchematic.AddIn.UI.MappingDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="clr-namespace:SWEETs.SwePdfSchematic.AddIn.UI"
+        Title="Choose library symbol" Width="1000" Height="700" MinWidth="820" MinHeight="520"
+        WindowStartupLocation="CenterOwner" ResizeMode="CanResizeWithGrip" ShowInTaskbar="False"
+        FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="13" UseLayoutRounding="True"
+        FocusManager.FocusedElement="{Binding ElementName=Search}">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/SWEETs.SwePdfSchematic.AddIn;component/UI/Theme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <ui:BoolToVisibility x:Key="BoolVis" />
+            <SolidColorBrush x:Key="PreviewBg" Color="#1F2430" />
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid Background="{StaticResource Bg}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Header: what is being mapped -->
+        <Border Style="{StaticResource Header.Bar}">
+            <StackPanel>
+                <TextBlock Text="SWEETs · PDF to Schematic" Style="{StaticResource Header.Overline}" />
+                <TextBlock x:Name="Heading" Style="{StaticResource Header.Title}" />
+                <TextBlock x:Name="Facts" Style="{StaticResource Header.Subtitle}" Margin="0,4,0,0" />
+            </StackPanel>
+        </Border>
+
+        <Grid Grid.Row="1" Margin="20,14,20,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="16" />
+                <ColumnDefinition Width="300" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Search, filters, results -->
+            <DockPanel>
+                <Grid DockPanel.Dock="Top">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="8" />
+                        <ColumnDefinition Width="130" />
+                        <ColumnDefinition Width="8" />
+                        <ColumnDefinition Width="190" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="Search name, description or class" Style="{StaticResource FieldLabel}" Margin="0,0,0,4" />
+                        <TextBox x:Name="Search" TextChanged="OnFilterChanged" KeyDown="OnSearchKey" AutomationProperties.Name="Search symbols" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Standard" Style="{StaticResource FieldLabel}" Margin="0,0,0,4" />
+                        <ComboBox x:Name="StandardFilter" SelectionChanged="OnFilterChanged" AutomationProperties.Name="Standard filter" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="4">
+                        <TextBlock Text="Class" Style="{StaticResource FieldLabel}" Margin="0,0,0,4" />
+                        <ComboBox x:Name="CategoryFilter" SelectionChanged="OnFilterChanged" AutomationProperties.Name="Class filter" />
+                    </StackPanel>
+                </Grid>
+                <DockPanel DockPanel.Dock="Top" Margin="0,8,0,0">
+                    <CheckBox x:Name="MatchPoles" Checked="OnFilterChanged" Unchecked="OnFilterChanged" />
+                    <TextBlock x:Name="Count" Style="{StaticResource Text.Caption}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                </DockPanel>
+
+                <Border BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="6" Background="{StaticResource Surface}" Margin="0,8,0,0">
+                    <Grid>
+                        <ListBox x:Name="Results" BorderThickness="0" Background="Transparent" SelectionChanged="OnPick" MouseDoubleClick="OnDoubleClick"
+                                 VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 AutomationProperties.Name="Library symbols">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="{x:Type ui:CatalogEntry}">
+                                    <Grid Margin="2,4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="52" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border Width="44" Height="44" CornerRadius="4" Background="{StaticResource PreviewBg}" VerticalAlignment="Top">
+                                            <Image Source="{Binding Preview}" Stretch="Uniform" Margin="3" RenderOptions.BitmapScalingMode="HighQuality" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="4,0,8,0">
+                                            <TextBlock Text="{Binding Name}" FontFamily="{StaticResource MonoFont}" FontSize="12.5" Foreground="{StaticResource Ink}" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding Description}" Style="{StaticResource Text.Body}" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding Meta}" Style="{StaticResource Text.Caption}" TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                        <Border Grid.Column="2" Style="{StaticResource Chip}" VerticalAlignment="Top">
+                                            <TextBlock Text="{Binding Source}" FontSize="11" Foreground="{StaticResource InkMuted}" />
+                                        </Border>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <TextBlock x:Name="Empty" Style="{StaticResource Text.Muted}" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap"
+                                   TextAlignment="Center" MaxWidth="360" Visibility="Collapsed" />
+                    </Grid>
+                </Border>
+            </DockPanel>
+
+            <!-- Selected symbol -->
+            <DockPanel Grid.Column="2">
+                <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+                    <TextBlock Text="Rotation offset" Style="{StaticResource FieldLabel}" />
+                    <StackPanel Orientation="Horizontal">
+                        <RadioButton x:Name="R0" Content="0°" GroupName="rot" IsChecked="True" Margin="0,0,14,0" />
+                        <RadioButton x:Name="R90" Content="90°" GroupName="rot" Margin="0,0,14,0" />
+                        <RadioButton x:Name="R180" Content="180°" GroupName="rot" Margin="0,0,14,0" />
+                        <RadioButton x:Name="R270" Content="270°" GroupName="rot" />
+                    </StackPanel>
+                    <TextBlock Text="When the library symbol is drawn in a different orientation from the PDF." Style="{StaticResource Text.Caption}" Margin="0,4,0,0" TextWrapping="Wrap" />
+                    <CheckBox x:Name="ApplySimilar" Margin="0,12,0,0" />
+                    <TextBlock x:Name="LearnNote" Style="{StaticResource Text.Caption}" Margin="22,2,0,0" TextWrapping="Wrap" />
+                </StackPanel>
+                <Border Style="{StaticResource Card}" Padding="14">
+                    <StackPanel>
+                        <Border Height="190" CornerRadius="6" Background="{StaticResource PreviewBg}">
+                            <Grid>
+                                <Image x:Name="BigPreview" Stretch="Uniform" Margin="12" RenderOptions.BitmapScalingMode="HighQuality" />
+                                <TextBlock x:Name="NoPreview" Text="No preview" Foreground="#9AA1AD" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                        <TextBlock x:Name="SelName" FontFamily="{StaticResource MonoFont}" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource Ink}"
+                                   Margin="0,12,0,0" TextWrapping="Wrap" />
+                        <TextBlock x:Name="SelDescription" Style="{StaticResource Text.Body}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                        <TextBlock x:Name="SelMeta" Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                    </StackPanel>
+                </Border>
+            </DockPanel>
+        </Grid>
+
+        <Border Grid.Row="2" Padding="20,12" Margin="0,14,0,0" Background="{StaticResource Surface}" BorderBrush="{StaticResource Border}" BorderThickness="0,1,0,0">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button Content="Cancel" Style="{StaticResource Btn.Secondary}" IsCancel="True" Margin="0,0,8,0" />
+                    <Button x:Name="Ok" Content="Use symbol" Style="{StaticResource Btn.Primary}" IsDefault="True" Click="OnOk" />
+                </StackPanel>
+                <Button x:Name="ReloadLibrary" DockPanel.Dock="Left" Content="Reload library" Style="{StaticResource Btn.Ghost}" Click="OnReload" Margin="-8,0,8,0"
+                        ToolTip="Read the SOLIDWORKS Electrical symbol library again (after adding symbols)" />
+                <TextBlock x:Name="Hint" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            </DockPanel>
+        </Border>
+    </Grid>
+</Window>

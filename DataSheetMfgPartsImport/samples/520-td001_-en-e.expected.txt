@@ -1,0 +1,25 @@
+Expected result of the offline rules engine for samples/520-td001_-en-e.pdf
+(Allen-Bradley PowerFlex 520-series catalog, 53 pages, one orderable part per table row).
+Checked against the PDF text with the same patterns used in RulesExtractor.cs.
+
+variants          106 (55 PowerFlex 523 catalog numbers 25A-..., 51 PowerFlex 525 catalog numbers 25B-...)
+                  read from the "Product Selection" ratings table, pages 14 and 15
+manufacturer      Rockwell Automation         (Allen-Bradley is the brand; both are named in the text)
+series            PowerFlex 520-series
+category          Drive or inverter           (flagged: guessed from the title)
+
+per variant, for example 25B-D6P0N104:
+  partNumber      25B-D6P0N104
+  description     PowerFlex 525 AC drive, 2.2 kW (3.0 HP) normal duty, 6.0 A, 380-480 AC V 3-phase input, frame A
+                  (flagged: built from the table row)
+  ratedVoltage    380-480 AC                  (from the group heading of the table)
+  ratedCurrent    6.0                         (output current)
+  ratedPower      2200                        (W, from the normal-duty kW column)
+  width/height/depth/weight  72 / 152 / 172 mm, 1.1 kg   (frame A row of "Drive Dimensions and Weight";
+                  flagged: assumed A=width, B=height, C=depth)
+  ipRating        IP20                        (flagged: IP00, IP30, IP11 also appear; IP30 is an optional kit)
+  otherSpecs      Model, frame size, input phases, EMC filter, normal and heavy duty ratings,
+                  input voltage range, total watts loss
+
+Not read: protection-device tables (fuses, breakers), accessories, terminals, temperature (given per mounting method).
+The AI engine is limited to 24 parts per sheet and 30,000 characters of text, so it cannot cover a catalog like this one.

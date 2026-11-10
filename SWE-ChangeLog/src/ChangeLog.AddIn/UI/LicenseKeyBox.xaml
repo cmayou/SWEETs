@@ -1,0 +1,26 @@
+<UserControl x:Class="ChangeLog.AddIn.UI.LicenseKeyBox"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/ChangeLog.AddIn;component/UI/Theme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <PasswordBox x:Name="HiddenBox" Style="{StaticResource Secret}" PasswordChanged="OnPasswordChanged"
+                     AutomationProperties.Name="API license key (hidden)"/>
+        <TextBox x:Name="VisibleBox" Style="{StaticResource Input}" FontFamily="Consolas" Visibility="Collapsed"
+                 TextChanged="OnTextChanged" AutomationProperties.Name="API license key (visible)"/>
+        <ToggleButton x:Name="Eye" Grid.Column="1" Margin="6,0,0,0" Width="32" Cursor="Hand"
+                      Checked="OnReveal" Unchecked="OnConceal" ToolTip="Show key"
+                      AutomationProperties.Name="Show or hide license key" FocusVisualStyle="{StaticResource Focus}">
+            <TextBlock x:Name="EyeGlyph" Style="{StaticResource Text.Icon}" Text="&#xE7B3;" HorizontalAlignment="Center"/>
+        </ToggleButton>
+    </Grid>
+</UserControl>

@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Console checks for the DWG patcher. Compiles the add-in's Dwg\*.cs (no SOLIDWORKS Electrical needed). -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <RootNamespace>SWEETs.DwgPatch.Tests</RootNamespace>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\src\SWEETs.SweDrawingParameters.AddIn\Dwg\*.cs" Link="Dwg\%(Filename)%(Extension)" />
+    <Compile Include="..\..\src\SWEETs.SweDrawingParameters.AddIn\Model\DrawingParameters.cs" Link="Model\DrawingParameters.cs" />
+    <None Include="testdata\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

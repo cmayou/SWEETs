@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Pure managed core: PDF vector reading, recognition, mapping store, build plan.
+       No SOLIDWORKS Electrical dependency, so it can be unit tested and iterated on anywhere. -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>SWEETs.SwePdfSchematic.Core</RootNamespace>
+    <AssemblyName>SWEETs.SwePdfSchematic.Core</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="PdfPig" Version="0.1.9" />
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Rules\default-rules.json" />
+  </ItemGroup>
+</Project>

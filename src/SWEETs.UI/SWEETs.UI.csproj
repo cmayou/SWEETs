@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    SWEETs.UI: the shared WPF theme (Theme.xaml) for every SWEETs window. Windows merge it through their tool's own
+    UI\Theme.xaml: pack://application:,,,/SWEETs.UI;component/Theme.xaml. No code, no SOLIDWORKS Electrical dependency.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <OutputType>Library</OutputType>
+    <RootNamespace>SWEETs.UI</RootNamespace>
+    <AssemblyName>SWEETs.UI</AssemblyName>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,27 @@
+<Window x:Class="ChangeLog.AddIn.UI.LicenseDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="clr-namespace:ChangeLog.AddIn.UI"
+        Title="Change Log — API license key" Width="520" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        FontFamily="Segoe UI" FontSize="12" Foreground="#1B1F24" Background="White">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/ChangeLog.AddIn;component/UI/Theme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    <StackPanel Margin="20">
+        <TextBlock Style="{StaticResource Text.H1}" Text="Connect to SOLIDWORKS Electrical"/>
+        <TextBlock x:Name="MessageText" TextWrapping="Wrap" Margin="0,8,0,14" Foreground="{StaticResource Brush.Muted}"/>
+        <TextBlock Style="{StaticResource Text.Caption}" Text="API license key" Margin="0,0,0,4"/>
+        <ui:LicenseKeyBox x:Name="KeyBox"/>
+        <TextBlock Style="{StaticResource Text.Caption}" TextWrapping="Wrap" TextTrimming="None" Margin="0,8,0,0"
+                   Text="The key is encrypted with Windows DPAPI for your account and never written in plain text."/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+            <Button Style="{StaticResource Btn}" Content="Cancel" IsCancel="True" Margin="0,0,8,0" MinWidth="80"/>
+            <Button Style="{StaticResource Btn.Primary}" Content="Connect" IsDefault="True" Click="OnConnect" MinWidth="96"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

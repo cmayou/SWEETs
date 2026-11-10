@@ -1,0 +1,10 @@
+bin/
+obj/
+artifacts/
+.vs/
+*.user
+*.suo
+TestResults/
+__pycache__/
+lib/Interop.EwAPI.dll
+lib/EwAPIX.dll
