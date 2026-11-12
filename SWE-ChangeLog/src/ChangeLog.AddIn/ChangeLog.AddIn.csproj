@@ -1,0 +1,59 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>ChangeLog.AddIn</AssemblyName>
+    <RootNamespace>ChangeLog.AddIn</RootNamespace>
+    <UseWPF>true</UseWPF>
+    <!-- SOLIDWORKS Electrical is 64-bit. -->
+    <PlatformTarget>x64</PlatformTarget>
+    <!--
+      Change Log is a SWEETs tool: a class library loaded by the SWEETs host (src\SWEETs.AddIn), which puts its six
+      buttons in the "Project Tools" group of the SWEETs tab.
+      Compile against the interop that SOLIDWORKS Electrical itself installs, with embedded interop
+      types (NoPIA), exactly like Dassault's own add-ins (ElectricalAddinSDK). Nothing extra to ship,
+      no tlbimp step, and no interop version conflicts inside SWE. Override with -p:SweBinDir=... .
+    -->
+    <SweBinDir Condition="'$(SweBinDir)' == ''">$(ProgramW6432)\SOLIDWORKS Corp\SOLIDWORKS Electrical\bin</SweBinDir>
+    <EwApiInterop>$([MSBuild]::EnsureTrailingSlash('$(SweBinDir)'))Interop.EwAPI.dll</EwApiInterop>
+    <!-- SWEETs: without SWE on the build machine, use the interop the SWEETs host generates in <SWEETs App>\lib. -->
+    <EwApiInterop Condition="!Exists('$(EwApiInterop)') and Exists('$(MSBuildThisFileDirectory)..\..\..\lib\Interop.EwAPI.dll')">$(MSBuildThisFileDirectory)..\..\..\lib\Interop.EwAPI.dll</EwApiInterop>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Part of SWEETs: shared SWEETs look (colours, buttons, inputs, window headers). -->
+    <ProjectReference Include="..\..\..\src\SWEETs.UI\SWEETs.UI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Inside SWEETs the API key belongs to the SWEETs host, so Change Log no longer prompts for or stores one.
+         The stand-alone key files stay in the folder but are not compiled. -->
+    <Compile Remove="Host\LicenseStore.cs;UI\LicenseDialog.xaml.cs;UI\LicenseKeyBox.xaml.cs" />
+    <Page Remove="UI\LicenseDialog.xaml;UI\LicenseKeyBox.xaml" />
+    <None Include="Host\LicenseStore.cs;UI\LicenseDialog.xaml;UI\LicenseDialog.xaml.cs;UI\LicenseKeyBox.xaml;UI\LicenseKeyBox.xaml.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ChangeLog.Core\ChangeLog.Core.csproj" />
+    <Reference Include="Interop.EwAPI">
+      <HintPath>$(EwApiInterop)</HintPath>
+      <EmbedInteropTypes>true</EmbedInteropTypes>
+      <Private>false</Private>
+    </Reference>
+    <!-- Embedded interop types surface VARIANT returns as dynamic; keep the binder available. -->
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Security" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Ribbon / pane icons are loaded from disk by SWE (setIconFromImage), so they ship as files. -->
+    <None Remove="Resources\**" />
+    <Resource Remove="Resources\**" />
+    <Content Include="Resources\*.png" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Also embedded: the pane header shows the Change Log icon (SWEETs header bar). -->
+    <Resource Include="Resources\changelog_64.png" />
+  </ItemGroup>
+
+  <Target Name="EnsureEwApiInterop" BeforeTargets="ResolveAssemblyReferences" Condition="!Exists('$(EwApiInterop)')">
+    <Error Text="SOLIDWORKS Electrical interop not found at $(EwApiInterop). Install SOLIDWORKS Electrical on the build machine or pass -p:SweBinDir=&lt;folder containing Interop.EwAPI.dll&gt;." />
+  </Target>
+</Project>

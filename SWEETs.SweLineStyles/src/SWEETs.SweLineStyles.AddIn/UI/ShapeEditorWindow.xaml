@@ -1,0 +1,205 @@
+﻿<Window x:Class="SWEETs.SweLineStyles.AddIn.UI.ShapeEditorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="clr-namespace:SWEETs.SweLineStyles.AddIn.UI"
+        xmlns:c="clr-namespace:SWEETs.SweLineStyles.AddIn.UI.Controls"
+        Title="{Binding Title}"
+        Width="1180" Height="800" MinWidth="980" MinHeight="620"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="13"
+        Background="#F5F6F8" UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/SWEETs.SweLineStyles.AddIn;component/UI/Theme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <ui:BoolToVisibility x:Key="BoolToVis" />
+            <ui:HasValueToVisibility x:Key="HasValueToVis" />
+            <ui:EnumEquals x:Key="EnumEq" />
+            <ui:EnumToVisibility x:Key="EnumToVis" />
+            <Style x:Key="ToolButton" TargetType="RadioButton" BasedOn="{StaticResource Segment}">
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            </Style>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Window.InputBindings>
+        <KeyBinding Key="Z" Modifiers="Control" Command="{Binding Undo}" />
+        <KeyBinding Key="L" Modifiers="Alt" Command="{Binding SetTool}" CommandParameter="Line" />
+        <KeyBinding Key="A" Modifiers="Alt" Command="{Binding SetTool}" CommandParameter="Arc" />
+        <KeyBinding Key="C" Modifiers="Alt" Command="{Binding SetTool}" CommandParameter="Circle" />
+        <KeyBinding Key="S" Modifiers="Alt" Command="{Binding SetTool}" CommandParameter="Select" />
+    </Window.InputBindings>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Header: identity -->
+        <Border Style="{StaticResource Header.Bar}">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Bottom">
+                    <StackPanel Margin="0,0,12,0">
+                        <TextBlock Text="NAME" Style="{StaticResource FieldLabel}" Margin="0,0,0,4" />
+                        <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Width="180" CharacterCasing="Upper"
+                                 FontFamily="{StaticResource MonoFont}" AutomationProperties.Name="Shape name" />
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Text="NUMBER" Style="{StaticResource FieldLabel}" Margin="0,0,0,4" />
+                        <TextBox Text="{Binding Number, UpdateSourceTrigger=PropertyChanged}" Width="80" TextAlignment="Right"
+                                 FontFamily="{StaticResource MonoFont}" AutomationProperties.Name="Shape number" ToolTip="1-255, unique in the shape file" />
+                    </StackPanel>
+                </StackPanel>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="SWEETs · Line Style Editor" Style="{StaticResource Header.Overline}" />
+                    <TextBlock Text="{Binding Title}" Style="{StaticResource Header.Title}" />
+                    <TextBlock Text="ltypeshp.shp" Style="{StaticResource Header.Subtitle}" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <Grid Grid.Row="1" Margin="20,14">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="230" />
+                <ColumnDefinition Width="14" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="14" />
+                <ColumnDefinition Width="300" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Tools -->
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <Border Style="{StaticResource Card}" Margin="0,0,0,12" Padding="12">
+                        <StackPanel>
+                            <TextBlock Text="Draw" Style="{StaticResource SectionHeader}" />
+                            <Border Background="{StaticResource SurfaceAlt}" CornerRadius="7" Padding="2">
+                                <UniformGrid Columns="2">
+                                    <RadioButton Style="{StaticResource ToolButton}" GroupName="Tool" Content="Line" ToolTip="Alt+L. Click points; Esc or right-click ends the chain."
+                                                 IsChecked="{Binding Tool, Converter={StaticResource EnumEq}, ConverterParameter=Line}" />
+                                    <RadioButton Style="{StaticResource ToolButton}" GroupName="Tool" Content="Arc" ToolTip="Alt+A. Start, end, then a point on the arc."
+                                                 IsChecked="{Binding Tool, Converter={StaticResource EnumEq}, ConverterParameter=Arc}" />
+                                    <RadioButton Style="{StaticResource ToolButton}" GroupName="Tool" Content="Circle" ToolTip="Alt+C. Centre, then a point on the circle."
+                                                 IsChecked="{Binding Tool, Converter={StaticResource EnumEq}, ConverterParameter=Circle}" />
+                                    <RadioButton Style="{StaticResource ToolButton}" GroupName="Tool" Content="Select" ToolTip="Alt+S. Click an element; Delete removes it."
+                                                 IsChecked="{Binding Tool, Converter={StaticResource EnumEq}, ConverterParameter=Select}" />
+                                </UniformGrid>
+                            </Border>
+                            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                <Button Content="Undo" Style="{StaticResource Btn.Chip}" Command="{Binding Undo}" ToolTip="Ctrl+Z" />
+                                <Button Content="Clear" Style="{StaticResource Btn.Chip}" Command="{Binding Clear}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,0,0,12" Padding="12">
+                        <StackPanel>
+                            <TextBlock Text="Grid" Style="{StaticResource SectionHeader}" />
+                            <TextBlock Text="SNAP (1/n UNIT)" Style="{StaticResource FieldLabel}" Margin="0,0,0,4" />
+                            <ComboBox ItemsSource="{Binding Divisors}" SelectedItem="{Binding Divisor}" AutomationProperties.Name="Snap divisor"
+                                      ToolTip="Finer snap stores the shape with a divide-scale code (3,n … 4,n)" />
+                            <TextBlock Text="DRAWING AREA (± UNITS)" Style="{StaticResource FieldLabel}" Margin="0,10,0,4" />
+                            <ComboBox ItemsSource="{Binding Extents}" SelectedItem="{Binding Extent}" AutomationProperties.Name="Drawing area" />
+                            <CheckBox Content="Show compiled result" IsChecked="{Binding ShowCompiled}" Margin="0,10,0,0"
+                                      ToolTip="Orange: the geometry decoded from the bytes that will be saved" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Padding="12">
+                        <StackPanel>
+                            <TextBlock Text="Import DXF" Style="{StaticResource SectionHeader}" />
+                            <Button Content="Choose DXF file…" Style="{StaticResource Btn.Secondary}" Click="OnImportDxf" HorizontalAlignment="Left" />
+                            <StackPanel Visibility="{Binding HasDxf, Converter={StaticResource BoolToVis}}" Margin="0,10,0,0">
+                                <TextBlock Text="{Binding DxfFile}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding DxfInfo}" Style="{StaticResource Text.Caption}" TextWrapping="Wrap" />
+                                <TextBlock Text="SHAPE UNITS PER DXF UNIT" Style="{StaticResource FieldLabel}" />
+                                <TextBox Text="{Binding DxfScale, UpdateSourceTrigger=PropertyChanged}" FontFamily="{StaticResource MonoFont}" AutomationProperties.Name="DXF scale" />
+                                <TextBlock Text="PLACEMENT" Style="{StaticResource FieldLabel}" />
+                                <RadioButton GroupName="Place" Content="Left edge on insertion point, centred on line" Margin="0,2"
+                                             IsChecked="{Binding DxfPlacement, Converter={StaticResource EnumEq}, ConverterParameter=CenterOnLine}" />
+                                <RadioButton GroupName="Place" Content="Keep DXF origin as insertion point" Margin="0,2"
+                                             IsChecked="{Binding DxfPlacement, Converter={StaticResource EnumEq}, ConverterParameter=KeepOrigin}" />
+                                <Button Content="Apply" Style="{StaticResource Btn.Primary}" Command="{Binding ApplyImport}" HorizontalAlignment="Left" Margin="0,10,0,0" />
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="0,10,0,0"
+                                       Text="ASCII DXF: LINE, ARC, CIRCLE, LWPOLYLINE, POLYLINE. Explode blocks first." />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Canvas -->
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Border BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="8" Background="White">
+                    <c:ShapeCanvas x:Name="DrawArea" Margin="1"
+                                   Primitives="{Binding Primitives}" Compiled="{Binding Compiled}" Divisor="{Binding Divisor}" Extent="{Binding Extent}"
+                                   Tool="{Binding Tool}" Selected="{Binding Selected}" ShowCompiled="{Binding ShowCompiled}"
+                                   CursorText="{Binding CursorText, Mode=OneWayToSource}" AutomationProperties.Name="Shape drawing area" />
+                </Border>
+                <DockPanel Grid.Row="1" Margin="2,8,2,0">
+                    <TextBlock DockPanel.Dock="Right" Text="{Binding CursorText}" FontFamily="{StaticResource MonoFont}" Style="{StaticResource Text.Caption}" />
+                    <Button DockPanel.Dock="Right" Content="Fit" Style="{StaticResource Btn.Ghost}" Padding="8,1" Margin="0,0,12,0" Click="OnFit" />
+                    <TextBlock Style="{StaticResource Text.Caption}" TextWrapping="Wrap"
+                               Text="Wheel: zoom · Right-drag: pan · Esc: end chain · Delete: remove selected. 1 unit = 1 drawing unit at S=1." />
+                </DockPanel>
+            </Grid>
+
+            <!-- Result -->
+            <ScrollViewer Grid.Column="4" VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <Border Style="{StaticResource Card}" Margin="0,0,0,12" Padding="12">
+                        <StackPanel>
+                            <DockPanel Margin="0,0,0,8">
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                    <TextBlock Text="S" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                    <TextBox Text="{Binding PreviewScale, UpdateSourceTrigger=PropertyChanged}" Width="52" Style="{StaticResource Input.Small}"
+                                             TextAlignment="Right" AutomationProperties.Name="Preview scale" />
+                                </StackPanel>
+                                <TextBlock Text="On a line" Style="{StaticResource Text.Subtitle}" VerticalAlignment="Center" />
+                            </DockPanel>
+                            <Border Background="White" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="6" Height="90">
+                                <c:LinePreview Pattern="{Binding PreviewPattern}" Revision="{Binding PreviewRevision}" Stroke="{StaticResource Ink}" StrokeThickness="1.4" Margin="6,2" />
+                            </Border>
+                            <TextBlock Text="Sample pattern .5,-.25,[shape,ltypeshp.shx,s=S],-.25" Style="{StaticResource Text.Caption}" Margin="0,6,0,0" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Padding="12">
+                        <StackPanel>
+                            <DockPanel Margin="0,0,0,8">
+                                <TextBlock DockPanel.Dock="Right" Text="{Binding ByteSummary}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
+                                <TextBlock Text="Specification" Style="{StaticResource Text.Subtitle}" />
+                            </DockPanel>
+                            <TextBox Text="{Binding Specification, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" Style="{StaticResource Input.Mono}"
+                                     Background="{StaticResource Bg}" MinHeight="80" AutomationProperties.Name="Generated specification" />
+                            <TextBlock Text="{Binding Notes}" Foreground="{StaticResource Warning}" FontSize="12" TextWrapping="Wrap" Margin="0,8,0,0"
+                                       Visibility="{Binding Notes, Converter={StaticResource HasValueToVis}}" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        <!-- Footer -->
+        <Border Grid.Row="2" Background="{StaticResource Surface}" BorderBrush="{StaticResource Border}" BorderThickness="0,1,0,0" Padding="20,10">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <!-- Not IsCancel: Esc ends a line chain on the canvas and must not close the dialog. -->
+                    <Button Content="Cancel" Style="{StaticResource Btn.Secondary}" Click="OnCancel" Margin="0,0,8,0" />
+                    <Button Content="Apply shape" Style="{StaticResource Btn.Primary}" IsEnabled="{Binding CanAccept}" Click="OnAccept"
+                            ToolTip="Keeps the shape in the editor; files are written when you save in the main window" />
+                </StackPanel>
+                <TextBlock Text="{Binding Error}" Foreground="{StaticResource Danger}" VerticalAlignment="Center" TextWrapping="Wrap" />
+            </DockPanel>
+        </Border>
+    </Grid>
+</Window>

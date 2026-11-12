@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Pure logic: journal, integrity, recorder, diff, query, export. No COM, no WPF, no NuGet
+    runtime dependencies (important inside a host process where assembly conflicts are a risk).
+  -->
+  <PropertyGroup>
+    <AssemblyName>ChangeLog.Core</AssemblyName>
+    <RootNamespace>ChangeLog.Core</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Security" />
+  </ItemGroup>
+</Project>

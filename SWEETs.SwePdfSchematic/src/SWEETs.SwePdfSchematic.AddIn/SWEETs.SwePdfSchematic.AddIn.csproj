@@ -1,0 +1,84 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    SOLIDWORKS Electrical 2026 add-in (COM, x64, .NET Framework 4.8, WPF UI).
+
+    EwAPI ships as a native COM DLL (EwAPIX.dll) with an embedded type library. The managed interop
+    (lib\Interop.EwAPI.dll, namespace EwAPI) is generated from it with TlbImp on the first build, so both
+    Visual Studio and `dotnet build` work. Overrides:
+      /p:SweTypeLibrary="D:\SWE\EwAPIX.dll"     where EwAPIX.dll lives (default: SWE install folder, then lib\)
+      /p:SweApiAssembly="...\Interop.EwAPI.dll"   use an existing interop instead
+  -->
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <PlatformTarget>x64</PlatformTarget>
+    <Platforms>x64</Platforms>
+    <RootNamespace>SWEETs.SwePdfSchematic.AddIn</RootNamespace>
+    <AssemblyName>SWEETs.SwePdfSchematic.AddIn</AssemblyName>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <SweInstallDir Condition="'$(SweInstallDir)' == ''">$(ProgramW6432)\SOLIDWORKS Corp\SOLIDWORKS Electrical</SweInstallDir>
+    <SweLibDir>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\lib'))</SweLibDir>
+    <SweTypeLibrary Condition="'$(SweTypeLibrary)' == '' and Exists('$(SweInstallDir)\EwAPIX.dll')">$(SweInstallDir)\EwAPIX.dll</SweTypeLibrary>
+    <SweTypeLibrary Condition="'$(SweTypeLibrary)' == ''">$(SweLibDir)\EwAPIX.dll</SweTypeLibrary>
+    <!-- Prefer the interop SWE itself ships and loads (bin\Interop.EwAPI.dll); fall back to one generated with TlbImp. -->
+    <SweApiAssembly Condition="'$(SweApiAssembly)' == '' and Exists('$(SweInstallDir)\bin\Interop.EwAPI.dll')">$(SweInstallDir)\bin\Interop.EwAPI.dll</SweApiAssembly>
+    <SweApiAssembly Condition="'$(SweApiAssembly)' == ''">$(SweLibDir)\Interop.EwAPI.dll</SweApiAssembly>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Shared SWEETs look (colours, buttons, inputs, window headers). -->
+    <ProjectReference Include="..\..\..\src\SWEETs.UI\SWEETs.UI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SWEETs.SwePdfSchematic.Core\SWEETs.SwePdfSchematic.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- EwAPI interop. SWE already has its own Interop.EwAPI loaded when it loads add-ins, so a second copy next to
+         the add-in would create duplicate EwAPI types and break every interface cast: never copy it.
+         Not embedded either: SweApi reflects over the full interop. -->
+    <Reference Include="EwAPI">
+      <HintPath>$(SweApiAssembly)</HintPath>
+      <Private>false</Private>
+      <EmbedInteropTypes>false</EmbedInteropTypes>
+    </Reference>
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Windows.Forms" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Resources\ribbon-icon.png" />
+    <None Include="Resources\ribbon-icon.ico" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Resources\ribbon-icon-32.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- Remove a stale copy left by earlier builds (it would shadow SWE's interop at runtime). -->
+  <Target Name="RemoveStaleEwApiInterop" AfterTargets="Build">
+    <Delete Files="$(OutDir)Interop.EwAPI.dll;$(OutDir)Interop.x64.EwAPI.dll" ContinueOnError="true" />
+  </Target>
+
+  <!-- Generate lib\Interop.EwAPI.dll from EwAPIX.dll's type library when it is missing. -->
+  <Target Name="GenerateEwApiInterop" BeforeTargets="ResolveAssemblyReferences" Condition="!Exists('$(SweApiAssembly)')">
+    <ItemGroup>
+      <_TlbImp Include="$(MSBuildProgramFiles32)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8.1 Tools\x64\TlbImp.exe" />
+      <_TlbImp Include="$(MSBuildProgramFiles32)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8 Tools\x64\TlbImp.exe" />
+      <_TlbImp Include="$(MSBuildProgramFiles32)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.7.2 Tools\x64\TlbImp.exe" />
+      <_TlbImp Include="$(MSBuildProgramFiles32)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6.1 Tools\x64\TlbImp.exe" />
+      <_TlbImpFound Include="@(_TlbImp)" Condition="Exists('%(FullPath)')" />
+    </ItemGroup>
+    <PropertyGroup>
+      <_TlbImpExe Condition="'$(TlbImpPath)' != ''">$(TlbImpPath)</_TlbImpExe>
+      <_TlbImpExe Condition="'$(_TlbImpExe)' == '' and '@(_TlbImpFound)' != ''">%(_TlbImpFound.FullPath)</_TlbImpExe>
+    </PropertyGroup>
+    <Error Condition="!Exists('$(SweTypeLibrary)')"
+           Text="EwAPIX.dll not found at '$(SweTypeLibrary)'. Install SOLIDWORKS Electrical 2026, copy EwAPIX.dll to '$(SweLibDir)', or pass /p:SweTypeLibrary=&lt;path&gt;." />
+    <Error Condition="'$(_TlbImpExe)' == ''"
+           Text="TlbImp.exe not found. Install the '.NET Framework 4.8 SDK' / 'Windows SDK' component in the Visual Studio Installer, or pass /p:TlbImpPath=&lt;path to x64 TlbImp.exe&gt;." />
+    <MakeDir Directories="$(SweLibDir)" />
+    <Exec Command="&quot;$(_TlbImpExe)&quot; &quot;$(SweTypeLibrary)&quot; /out:&quot;$(SweApiAssembly)&quot; /namespace:EwAPI /machine:X64  /nologo" />
+    <Message Importance="high" Text="Generated EwAPI interop: $(SweApiAssembly)" />
+  </Target>
+</Project>

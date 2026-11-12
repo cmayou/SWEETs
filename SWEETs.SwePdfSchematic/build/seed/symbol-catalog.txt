@@ -1,0 +1,4 @@
+# SOLIDWORKS Electrical library symbol names offered in the mapping picker.
+# One per line:  <exact library symbol name>|<description>
+# Export your library's symbol list (Symbols manager → select all → copy) and paste it here.
+# Names added during review are appended automatically. Lines starting with # are ignored.

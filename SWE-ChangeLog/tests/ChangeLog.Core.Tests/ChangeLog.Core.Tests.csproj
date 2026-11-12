@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Dependency-free test runner (console exe, exit code = failures). Runs in build\build.ps1 and
+    anywhere .NET Framework runs, without test adapters or NuGet test frameworks.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>ChangeLog.Core.Tests</AssemblyName>
+    <RootNamespace>ChangeLog.Core.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ChangeLog.Core\ChangeLog.Core.csproj" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Security" />
+  </ItemGroup>
+</Project>

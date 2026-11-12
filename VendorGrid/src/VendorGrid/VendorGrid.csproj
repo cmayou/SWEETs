@@ -1,0 +1,94 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <OutputType>Library</OutputType>
+    <PlatformTarget>x64</PlatformTarget>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <LangVersion>9.0</LangVersion>
+    <RootNamespace>VendorGrid</RootNamespace>
+    <AssemblyName>VendorGrid</AssemblyName>
+    <Version>2.0.0</Version>
+    <Company>VendorGrid</Company>
+    <Product>VendorGrid for SOLIDWORKS Electrical</Product>
+    <Prefer32Bit>false</Prefer32Bit>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <!-- VendorGrid is a SWEETs tool: a class library loaded by the SWEETs host (src\SWEETs.AddIn), which registers the
+         add-in with SOLIDWORKS Electrical and puts the "Vendor Search" button in the "Export Tools" group. No COM
+         registration of its own. -->
+    <RegisterForComInterop>false</RegisterForComInterop>
+    <!-- EwAPI interop: the same one every SWEETs tool compiles against (SWE's bin\Interop.EwAPI.dll, otherwise
+         lib\Interop.EwAPI.dll generated from lib\ewapix.dll with TlbImp). -->
+    <SweInstallDir Condition="'$(SweInstallDir)' == ''">$(ProgramW6432)\SOLIDWORKS Corp\SOLIDWORKS Electrical</SweInstallDir>
+    <SweLibDir>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\lib'))</SweLibDir>
+    <SweTypeLibrary Condition="'$(SweTypeLibrary)' == '' and Exists('$(SweInstallDir)\bin\ewapix.dll')">$(SweInstallDir)\bin\ewapix.dll</SweTypeLibrary>
+    <SweTypeLibrary Condition="'$(SweTypeLibrary)' == ''">$(SweLibDir)\ewapix.dll</SweTypeLibrary>
+    <SweApiAssembly Condition="'$(SweApiAssembly)' == '' and Exists('$(SweInstallDir)\bin\Interop.EwAPI.dll')">$(SweInstallDir)\bin\Interop.EwAPI.dll</SweApiAssembly>
+    <SweApiAssembly Condition="'$(SweApiAssembly)' == ''">$(SweLibDir)\Interop.EwAPI.dll</SweApiAssembly>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Shared SWEETs look (colours, buttons, inputs, window headers). -->
+    <ProjectReference Include="..\..\..\src\SWEETs.UI\SWEETs.UI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- EwAPI interop. SWE already has its own Interop.EwAPI loaded when it loads add-ins, so a second copy next to
+         the add-in would create duplicate EwAPI types and break every interface cast: never copy it. -->
+    <Reference Include="EwAPI">
+      <HintPath>$(SweApiAssembly)</HintPath>
+      <Private>false</Private>
+      <EmbedInteropTypes>false</EmbedInteropTypes>
+    </Reference>
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Security" />
+    <Reference Include="System.Web" />
+    <Reference Include="System.Web.Extensions" />
+    <Reference Include="WindowsFormsIntegration" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Resources\VendorGrid.png" />
+    <Resource Include="Resources\VendorGrid.ico" />
+    <Resource Include="Resources\Vendors\*.png" />
+    <EmbeddedResource Include="Resources\Localization.tsv" />
+    <None Update="Resources\VendorGrid.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>icons\%(Filename)%(Extension)</Link>
+    </None>
+    <None Update="Resources\VendorGrid_*.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>icons\%(Filename)%(Extension)</Link>
+    </None>
+  </ItemGroup>
+
+  <!-- Remove a stale copy (it would shadow SWE's interop at runtime). -->
+  <Target Name="RemoveStaleEwApiInterop" AfterTargets="Build">
+    <Delete Files="$(OutDir)Interop.EwAPI.dll;$(OutDir)Interop.x64.EwAPI.dll;$(OutDir)EwAPI.dll" ContinueOnError="true" />
+  </Target>
+
+  <!-- Generate lib\Interop.EwAPI.dll from ewapix.dll's type library when no interop is available. -->
+  <Target Name="GenerateEwApiInterop" BeforeTargets="ResolveAssemblyReferences" Condition="!Exists('$(SweApiAssembly)')">
+    <ItemGroup>
+      <_TlbImp Include="$(MSBuildProgramFiles32)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8.1 Tools\x64\TlbImp.exe" />
+      <_TlbImp Include="$(MSBuildProgramFiles32)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8 Tools\x64\TlbImp.exe" />
+      <_TlbImp Include="$(MSBuildProgramFiles32)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.7.2 Tools\x64\TlbImp.exe" />
+      <_TlbImp Include="$(MSBuildProgramFiles32)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6.1 Tools\x64\TlbImp.exe" />
+      <_TlbImpFound Include="@(_TlbImp)" Condition="Exists('%(FullPath)')" />
+    </ItemGroup>
+    <PropertyGroup>
+      <_TlbImpExe Condition="'$(TlbImpPath)' != ''">$(TlbImpPath)</_TlbImpExe>
+      <_TlbImpExe Condition="'$(_TlbImpExe)' == '' and '@(_TlbImpFound)' != ''">%(_TlbImpFound.FullPath)</_TlbImpExe>
+    </PropertyGroup>
+    <Error Condition="!Exists('$(SweTypeLibrary)')"
+           Text="ewapix.dll not found at '$(SweTypeLibrary)'. Install SOLIDWORKS Electrical 2026 or pass /p:SweTypeLibrary=&lt;path&gt;." />
+    <Error Condition="'$(_TlbImpExe)' == ''"
+           Text="TlbImp.exe not found. Install the '.NET Framework 4.8 SDK' component in the Visual Studio Installer, or pass /p:TlbImpPath=&lt;path to x64 TlbImp.exe&gt;." />
+    <MakeDir Directories="$(SweLibDir)" />
+    <Exec Command="&quot;$(_TlbImpExe)&quot; &quot;$(SweTypeLibrary)&quot; /out:&quot;$(SweApiAssembly)&quot; /namespace:EwAPI /machine:X64 /nologo" />
+    <Message Importance="high" Text="Generated EwAPI interop: $(SweApiAssembly)" />
+  </Target>
+
+</Project>

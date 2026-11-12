@@ -1,0 +1,17 @@
+<Project>
+  <!-- SWEETs host only. Each tool keeps its own Directory.Build.props (version, product name) in its folder.
+       build\Build.ps1 passes -p:SweetsVersion=<major.minor.patch>; a plain -p:Version would re-stamp the tools too. -->
+  <PropertyGroup>
+    <SweetsVersion Condition="'$(SweetsVersion)' == ''">1.0.0</SweetsVersion>
+    <Version>$(SweetsVersion)</Version>
+    <AssemblyVersion>$(SweetsVersion).0</AssemblyVersion>
+    <FileVersion>$(SweetsVersion).0</FileVersion>
+    <Company>SWEETs</Company>
+    <Product>SWEETs for SOLIDWORKS Electrical</Product>
+    <Copyright>© 2026 SWEETs</Copyright>
+    <LangVersion>10.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+</Project>

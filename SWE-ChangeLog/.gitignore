@@ -1,0 +1,10 @@
+bin/
+obj/
+out/
+lib/
+.vs/
+*.user
+*.suo
+*.msi
+*.wixpdb
+TestResults/

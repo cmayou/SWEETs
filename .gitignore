@@ -1,0 +1,32 @@
+# Build output
+bin/
+obj/
+out/
+dist/
+artifacts/
+packages/
+TestResults/
+.vs/
+*.user
+*.suo
+__pycache__/
+*.msi
+*.wixpdb
+
+# Secrets: SOLIDWORKS Electrical API keys (see README "API key")
+*.local.cs
+
+# Dassault interop (comes with SOLIDWORKS Electrical)
+**/lib/*.dll
+Interop.EwAPI.dll
+EwAPIX.dll
+EwAPI.dll
+
+# Kept locally, not published
+_standalone-backup/
+DataSheetMfgPartsImport/samples/*.pdf
+SWEETs.SweDrawingParameters/tools/SWEETs.DwgPatch.Tests/testdata/
+SWEETs.SweLineStyles/tools/SWEETs.LineStyles.Tests/testdata/
+VendorGrid/installer/
+SWE-ChangeLog/installer/
+DataSheetMfgPartsImport/installer/

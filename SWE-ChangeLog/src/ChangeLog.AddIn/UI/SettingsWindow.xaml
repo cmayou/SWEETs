@@ -1,0 +1,74 @@
+<Window x:Class="ChangeLog.AddIn.UI.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="clr-namespace:ChangeLog.AddIn.UI"
+        Title="Change Log — Settings" Width="620" Height="680" MinWidth="480" MinHeight="420"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="12" Foreground="#111827" Background="#F5F6F8">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/ChangeLog.AddIn;component/UI/Theme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <Style x:Key="Label" TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                <Setter Property="Margin" Value="0,10,0,4"/>
+            </Style>
+        </ResourceDictionary>
+    </Window.Resources>
+    <DockPanel>
+        <Border DockPanel.Dock="Top" Style="{StaticResource Header.Bar}">
+            <StackPanel>
+                <TextBlock Style="{StaticResource Header.Overline}" Text="SWEETs · Change Log"/>
+                <TextBlock Style="{StaticResource Header.Title}" Text="Settings"/>
+                <TextBlock Style="{StaticResource Header.Subtitle}" Text="Recording, storage and integrity options"/>
+            </StackPanel>
+        </Border>
+        <Border DockPanel.Dock="Bottom" Background="White" BorderBrush="{StaticResource Brush.Border}" BorderThickness="0,1,0,0" Padding="16,10">
+            <DockPanel>
+                <TextBlock Style="{StaticResource Text.Caption}" Text="{Binding Version}" VerticalAlignment="Center"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Style="{StaticResource Btn}" Content="Cancel" IsCancel="True" Margin="0,0,8,0" MinWidth="80"/>
+                    <Button Style="{StaticResource Btn.Primary}" Content="Save settings" IsDefault="True" Click="OnSave" MinWidth="110"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="16">
+
+                <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource Text.H2}" Text="Recording"/>
+                        <TextBlock Style="{StaticResource Label}" Text="Language code for descriptions (as configured in SOLIDWORKS Electrical)"/>
+                        <TextBox Style="{StaticResource Input}" Width="120" HorizontalAlignment="Left" Text="{Binding Settings.Language, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBlock Style="{StaticResource Label}" Text="Grouping window (seconds) — events closer together become one change / batch"/>
+                        <TextBox Style="{StaticResource Input}" Width="120" HorizontalAlignment="Left" Text="{Binding Settings.QuietWindowSeconds, UpdateSourceTrigger=PropertyChanged}"/>
+                        <CheckBox Margin="0,12,0,0" IsChecked="{Binding Settings.LogWireSegments}"
+                                  Content="Log individual wire segments (noisy; segments are always kept for the visual compare)"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource Text.H2}" Text="Storage and integrity"/>
+                        <TextBlock Style="{StaticResource Label}" Text="Current project log location"/>
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Style="{StaticResource Btn.Ghost}" Command="{Binding OpenStoreCommand}" Content="Open"/>
+                            <TextBlock Text="{Binding StoreLocation, TargetNullValue='No project open'}" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                        </DockPanel>
+                        <TextBlock Style="{StaticResource Label}" Text="Override log root folder (optional; default is &lt;project folder&gt;\ChangeLog)"/>
+                        <TextBox Style="{StaticResource Input}" Text="{Binding Settings.StoreRootOverride, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBlock Style="{StaticResource Label}" Text="External anchor folder (optional; IT-managed, append-only share)"/>
+                        <TextBox Style="{StaticResource Input}" Text="{Binding Settings.AnchorFolder, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBlock Style="{StaticResource Text.Caption}" TextWrapping="Wrap" TextTrimming="None" Margin="0,6,0,0"
+                                   Text="Without an anchor, tampering is detected when it affects other users' witnessed history or signatures, but the sole author of a project could silently drop their own most recent, unwitnessed entries."/>
+                        <TextBlock Style="{StaticResource Label}" Text="Your journal signing key (ECDSA P-256, non-exportable)"/>
+                        <TextBlock FontFamily="Consolas" Text="{Binding SigningKeyId}"/>
+                        <TextBlock Style="{StaticResource Label}" Text="Recorded identity"/>
+                        <TextBlock Text="{Binding Identity}" TextWrapping="Wrap"/>
+                        <Button Style="{StaticResource Btn.Ghost}" HorizontalAlignment="Left" Margin="0,10,0,0" Command="{Binding OpenLogCommand}" Content="Open diagnostics log folder"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</Window>

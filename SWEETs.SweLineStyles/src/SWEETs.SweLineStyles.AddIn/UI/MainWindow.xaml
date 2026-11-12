@@ -1,0 +1,547 @@
+﻿<Window x:Class="SWEETs.SweLineStyles.AddIn.UI.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="clr-namespace:SWEETs.SweLineStyles.AddIn.UI"
+        xmlns:c="clr-namespace:SWEETs.SweLineStyles.AddIn.UI.Controls"
+        xmlns:vm="clr-namespace:SWEETs.SweLineStyles.AddIn.UI.ViewModels"
+        Title="Line Style Editor"
+        Width="1320" Height="860" MinWidth="1040" MinHeight="640"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="13"
+        Background="#F5F6F8" UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/SWEETs.SweLineStyles.AddIn;component/UI/Theme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <ui:BoolToVisibility x:Key="BoolToVis" />
+            <ui:HasValueToVisibility x:Key="HasValueToVis" />
+            <ui:EnumEquals x:Key="EnumEq" />
+            <ui:EnumToVisibility x:Key="EnumToVis" />
+
+            <Style x:Key="Num" TargetType="TextBox" BasedOn="{StaticResource Input.Small}">
+                <Setter Property="Width" Value="62" />
+                <Setter Property="TextAlignment" Value="Right" />
+                <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+            </Style>
+            <Style x:Key="MiniLabel" TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="Margin" Value="10,0,4,0" />
+            </Style>
+
+            <!-- Kind badge (Simple / Shape / Text / Invalid) -->
+            <Style x:Key="KindBadge" TargetType="Border" BasedOn="{StaticResource Badge}">
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding Kind}" Value="Shape">
+                        <Setter Property="Background" Value="{StaticResource AccentSoft}" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding Kind}" Value="Text">
+                        <Setter Property="Background" Value="{StaticResource SuccessSoft}" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding Kind}" Value="Invalid">
+                        <Setter Property="Background" Value="{StaticResource DangerSoft}" />
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- Unsaved marker -->
+            <DataTemplate x:Key="ModifiedDot">
+                <Border Width="8" Height="8" CornerRadius="4" Background="{StaticResource Warning}" VerticalAlignment="Center"
+                        Margin="6,0,0,0" ToolTip="Unsaved change" />
+            </DataTemplate>
+
+            <!-- Message banner -->
+            <Style x:Key="BannerBox" TargetType="Border">
+                <Setter Property="Padding" Value="14,10" />
+                <Setter Property="Margin" Value="20,12,20,0" />
+                <Setter Property="CornerRadius" Value="6" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="Background" Value="{StaticResource AccentSoft}" />
+                <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding Banner}" Value="None">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding Banner}" Value="Success">
+                        <Setter Property="Background" Value="{StaticResource SuccessSoft}" />
+                        <Setter Property="BorderBrush" Value="{StaticResource Success}" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding Banner}" Value="Warning">
+                        <Setter Property="Background" Value="{StaticResource WarningSoft}" />
+                        <Setter Property="BorderBrush" Value="{StaticResource Warning}" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding Banner}" Value="Error">
+                        <Setter Property="Background" Value="{StaticResource DangerSoft}" />
+                        <Setter Property="BorderBrush" Value="{StaticResource Danger}" />
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- One pattern element row -->
+            <DataTemplate x:Key="ElementRow" DataType="{x:Type vm:PatternElementViewModel}">
+                <Border BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1" Padding="0,7">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="28" />
+                            <ColumnDefinition Width="96" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="{Binding Index}" Style="{StaticResource Text.Caption}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <ComboBox Grid.Column="1" ItemsSource="{x:Static vm:PatternElementViewModel.Kinds}" SelectedItem="{Binding Kind}"
+                                  VerticalAlignment="Center" AutomationProperties.Name="Element type" />
+                        <WrapPanel Grid.Column="2" Margin="10,0,0,0" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Visibility="{Binding IsLength, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Text="Length" Style="{StaticResource MiniLabel}" Margin="0,0,4,0" />
+                                <TextBox Text="{Binding Length, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Num}" Width="80"
+                                         AutomationProperties.Name="Length" ToolTip="Drawing units. Dash = pen down, gap = pen up." />
+                            </StackPanel>
+                            <TextBlock Text="Point (zero-length dash)" Style="{StaticResource Text.Caption}" VerticalAlignment="Center"
+                                       Visibility="{Binding Kind, Converter={StaticResource EnumToVis}, ConverterParameter=Dot}" />
+                            <StackPanel Orientation="Horizontal" Visibility="{Binding IsShape, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Text="Shape" Style="{StaticResource MiniLabel}" Margin="0,0,4,0" />
+                                <ComboBox Width="128" IsEditable="True" Text="{Binding Content, UpdateSourceTrigger=PropertyChanged}"
+                                          ItemsSource="{Binding DataContext.ShapeNames, RelativeSource={RelativeSource AncestorType=Window}}"
+                                          AutomationProperties.Name="Shape name" />
+                                <TextBlock Text="File" Style="{StaticResource MiniLabel}" />
+                                <TextBox Text="{Binding Source, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Input.Small}" Width="104"
+                                         AutomationProperties.Name="Shape file" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Visibility="{Binding IsText, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Text="Text" Style="{StaticResource MiniLabel}" Margin="0,0,4,0" />
+                                <TextBox Text="{Binding Content, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Input.Small}" Width="90"
+                                         AutomationProperties.Name="Text" />
+                                <TextBlock Text="Style" Style="{StaticResource MiniLabel}" />
+                                <TextBox Text="{Binding Source, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Input.Small}" Width="90"
+                                         AutomationProperties.Name="Text style" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Visibility="{Binding IsComplex, Converter={StaticResource BoolToVis}}" Margin="0,4,0,0">
+                                <TextBlock Text="Scale" Style="{StaticResource MiniLabel}" ToolTip="Scale factor (S=)" />
+                                <TextBox Text="{Binding Scale, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Num}" AutomationProperties.Name="Scale" />
+                                <TextBlock Text="Rotation" Style="{StaticResource MiniLabel}" ToolTip="Rotation in degrees (R= relative to the line, A= absolute)" />
+                                <TextBox Text="{Binding Rotation, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Num}" AutomationProperties.Name="Rotation" />
+                                <CheckBox Content="Abs" IsChecked="{Binding Absolute}" Margin="6,0,0,0" VerticalAlignment="Center" FontSize="12"
+                                          ToolTip="Absolute rotation (A=) instead of relative to the line (R=)" />
+                                <TextBlock Text="X" Style="{StaticResource MiniLabel}" ToolTip="Offset along the line" />
+                                <TextBox Text="{Binding X, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Num}" AutomationProperties.Name="X offset" />
+                                <TextBlock Text="Y" Style="{StaticResource MiniLabel}" ToolTip="Offset across the line" />
+                                <TextBox Text="{Binding Y, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Num}" AutomationProperties.Name="Y offset" />
+                            </StackPanel>
+                        </WrapPanel>
+                        <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Content="↑" Style="{StaticResource Btn.Icon}" ToolTip="Move up" AutomationProperties.Name="Move up"
+                                    Command="{Binding DataContext.MoveUp, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}" />
+                            <Button Content="↓" Style="{StaticResource Btn.Icon}" ToolTip="Move down" AutomationProperties.Name="Move down"
+                                    Command="{Binding DataContext.MoveDown, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}" />
+                            <Button Content="✕" Style="{StaticResource Btn.Danger}" Padding="7,3" ToolTip="Remove" AutomationProperties.Name="Remove element"
+                                    Command="{Binding DataContext.Remove, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </DataTemplate>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Window.InputBindings>
+        <KeyBinding Key="S" Modifiers="Control" Command="{Binding Save}" />
+    </Window.InputBindings>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- ================= Header ================= -->
+        <Border Style="{StaticResource Header.Bar}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal">
+                <Image Style="{StaticResource Header.Icon}" Source="pack://application:,,,/SWEETs.SweLineStyles.AddIn;component/Resources/ribbon-icon.png" />
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="SWEETs · Drawing Tools" Style="{StaticResource Header.Overline}" />
+                    <TextBlock Text="Line Style Editor" Style="{StaticResource Header.Title}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                        <TextBlock Text="{Binding Folder}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
+                        <Button Content="Open" Style="{StaticResource Btn.Ghost}" FontSize="11.5" Padding="6,1" Margin="6,0,0,0" Command="{Binding OpenFolder}"
+                                ToolTip="Open the Support folder in Explorer" />
+                        <Button Content="Change…" Style="{StaticResource Btn.Ghost}" FontSize="11.5" Padding="6,1" Command="{Binding ChangeFolder}"
+                                ToolTip="Use the line style files in another folder" />
+                    </StackPanel>
+                </StackPanel>
+                </StackPanel>
+
+                <!-- Tabs -->
+                <Border Grid.Column="1" Background="{StaticResource SurfaceAlt}" CornerRadius="7" Padding="2" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <RadioButton Style="{StaticResource Segment}" GroupName="Tab" FontSize="13"
+                                     IsChecked="{Binding Tab, Converter={StaticResource EnumEq}, ConverterParameter=Styles}">
+                            <TextBlock><Run Text="Line styles " /><Run Text="{Binding StyleCount, Mode=OneWay}" Foreground="{StaticResource InkSubtle}" /></TextBlock>
+                        </RadioButton>
+                        <RadioButton Style="{StaticResource Segment}" GroupName="Tab" FontSize="13"
+                                     IsChecked="{Binding Tab, Converter={StaticResource EnumEq}, ConverterParameter=Shapes}">
+                            <TextBlock><Run Text="Shapes " /><Run Text="{Binding ShapeCount, Mode=OneWay}" Foreground="{StaticResource InkSubtle}" /></TextBlock>
+                        </RadioButton>
+                    </StackPanel>
+                </Border>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding UnsavedText}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,14,0" />
+                    <Button Content="Backups" Style="{StaticResource Btn.Secondary}" Command="{Binding Backups}" Margin="0,0,8,0"
+                            ToolTip="Restore files saved before an earlier change" />
+                    <Button Content="Discard changes" Style="{StaticResource Btn.Secondary}" Command="{Binding Revert}" Margin="0,0,8,0" />
+                    <Button Style="{StaticResource Btn.Primary}" Command="{Binding Save}" ToolTip="Back up and write linestyle.xlin, ltypeshp.shp and ltypeshp.shx (Ctrl+S)">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xEA18;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" VerticalAlignment="Center" Margin="0,0,7,0" />
+                            <TextBlock Text="Save to SOLIDWORKS Electrical" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ================= Banner ================= -->
+        <Border Grid.Row="1" Style="{StaticResource BannerBox}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="{Binding BannerText}" Style="{StaticResource Text.Body}" />
+                <Button Grid.Column="1" Content="✕" Style="{StaticResource Btn.Icon}" Command="{Binding DismissBanner}" VerticalAlignment="Top"
+                        AutomationProperties.Name="Dismiss message" />
+            </Grid>
+        </Border>
+
+        <!-- ================= Line styles tab ================= -->
+        <Grid Grid.Row="2" Margin="20,14,20,14" Visibility="{Binding Tab, Converter={StaticResource EnumToVis}, ConverterParameter=Styles}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="380" />
+                <ColumnDefinition Width="16" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Library list -->
+            <Border Style="{StaticResource Card}" Padding="0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <StackPanel Margin="14,14,14,8">
+                        <Grid>
+                            <TextBox x:Name="SearchBox" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Search line styles" />
+                            <TextBlock Text="Search name, description or pattern" Style="{StaticResource Text.Caption}" Margin="10,0,0,0" VerticalAlignment="Center"
+                                       IsHitTestVisible="False"
+                                       Visibility="{Binding Text, ElementName=SearchBox, Converter={StaticResource HasValueToVis}, ConverterParameter=Invert}" />
+                        </Grid>
+                        <Border Background="{StaticResource SurfaceAlt}" CornerRadius="7" Padding="2" Margin="0,8,0,0" HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton Style="{StaticResource Segment}" GroupName="Filter" Content="All" IsChecked="{Binding Filter, Converter={StaticResource EnumEq}, ConverterParameter=All}" />
+                                <RadioButton Style="{StaticResource Segment}" GroupName="Filter" Content="Simple" IsChecked="{Binding Filter, Converter={StaticResource EnumEq}, ConverterParameter=Simple}" />
+                                <RadioButton Style="{StaticResource Segment}" GroupName="Filter" Content="Shape" IsChecked="{Binding Filter, Converter={StaticResource EnumEq}, ConverterParameter=Shape}" />
+                                <RadioButton Style="{StaticResource Segment}" GroupName="Filter" Content="Text" IsChecked="{Binding Filter, Converter={StaticResource EnumEq}, ConverterParameter=Text}" />
+                                <RadioButton Style="{StaticResource Segment}" GroupName="Filter" Content="Unsaved" IsChecked="{Binding Filter, Converter={StaticResource EnumEq}, ConverterParameter=Modified}" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <ListBox Grid.Row="1" ItemsSource="{Binding StylesView}" SelectedItem="{Binding SelectedStyle}"
+                             BorderThickness="0" Background="Transparent" Padding="12,0,12,0"
+                             ItemContainerStyle="{StaticResource CardListItem}"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.ScrollUnit="Pixel"
+                             AutomationProperties.Name="Line styles">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:LineStyleViewModel}">
+                                <Grid Margin="12,9,12,8">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="28" />
+                                    </Grid.RowDefinitions>
+                                    <DockPanel>
+                                        <Border DockPanel.Dock="Right" Style="{StaticResource KindBadge}">
+                                            <TextBlock Text="{Binding Kind}" FontSize="11" Foreground="{StaticResource InkMuted}" />
+                                        </Border>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{StaticResource Ink}" TextTrimming="CharacterEllipsis" />
+                                            <ContentPresenter ContentTemplate="{StaticResource ModifiedDot}"
+                                                              Visibility="{Binding IsModified, Converter={StaticResource BoolToVis}}" />
+                                        </StackPanel>
+                                    </DockPanel>
+                                    <TextBlock Grid.Row="1" Text="{Binding English}" Style="{StaticResource Text.Caption}" TextTrimming="CharacterEllipsis" Margin="0,1,0,0" />
+                                    <c:LinePreview Grid.Row="2" Pattern="{Binding Pattern}" Stroke="{StaticResource Ink}" StrokeThickness="1.25"
+                                                   Revision="{Binding DataContext.ShapeRevision, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <Border Grid.Row="2" BorderBrush="{StaticResource Border}" BorderThickness="0,1,0,0" Padding="12,10">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="+ New" Style="{StaticResource Btn.Secondary}" Command="{Binding NewStyle}" Margin="0,0,8,0" />
+                            <Button Content="Duplicate" Style="{StaticResource Btn.Secondary}" Command="{Binding DuplicateStyle}" Margin="0,0,8,0" />
+                            <Button Content="Delete" Style="{StaticResource Btn.Danger}" Command="{Binding DeleteStyle}" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- Editor -->
+            <Grid Grid.Column="2">
+                <TextBlock Text="Select a line style, or create one with + New." Style="{StaticResource Text.Muted}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Visibility="{Binding SelectedStyle, Converter={StaticResource HasValueToVis}, ConverterParameter=Invert}" />
+                <ScrollViewer VerticalScrollBarVisibility="Auto" DataContext="{Binding SelectedStyle}"
+                              Visibility="{Binding Converter={StaticResource HasValueToVis}}">
+                    <StackPanel>
+                        <!-- Problems -->
+                        <Border Style="{StaticResource Card}" Background="{StaticResource DangerSoft}" BorderBrush="{StaticResource Danger}" Margin="0,0,0,12" Padding="14,10"
+                                Visibility="{Binding DataContext.StyleErrors, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource HasValueToVis}}">
+                            <ItemsControl ItemsSource="{Binding DataContext.StyleErrors, RelativeSource={RelativeSource AncestorType=Window}}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate><TextBlock Text="{Binding StringFormat='•  {0}'}" Foreground="{StaticResource Danger}" TextWrapping="Wrap" /></DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Border>
+                        <Border Style="{StaticResource Card}" Background="{StaticResource WarningSoft}" BorderBrush="{StaticResource Warning}" Margin="0,0,0,12" Padding="14,10"
+                                Visibility="{Binding DataContext.StyleWarnings, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource HasValueToVis}}">
+                            <ItemsControl ItemsSource="{Binding DataContext.StyleWarnings, RelativeSource={RelativeSource AncestorType=Window}}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate><TextBlock Text="{Binding StringFormat='•  {0}'}" Foreground="{StaticResource Warning}" TextWrapping="Wrap" /></DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Border>
+
+                        <!-- Preview -->
+                        <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                            <StackPanel>
+                                <DockPanel Margin="0,0,0,8">
+                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                        <TextBlock Text="Zoom" Style="{StaticResource MiniLabel}" />
+                                        <Slider Width="160" Minimum="0.25" Maximum="4" VerticalAlignment="Center" AutomationProperties.Name="Preview zoom"
+                                                Value="{Binding DataContext.Zoom, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Name}" Style="{StaticResource Text.Subtitle}" />
+                                        <Border Style="{StaticResource KindBadge}" Margin="10,0,0,0">
+                                            <TextBlock Text="{Binding Kind}" FontSize="11" Foreground="{StaticResource InkMuted}" />
+                                        </Border>
+                                        <TextBlock Text="{Binding PeriodText}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="10,0,0,0" />
+                                    </StackPanel>
+                                </DockPanel>
+                                <Border Background="White" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="6" Height="130">
+                                    <c:LinePreview Pattern="{Binding Pattern}" Stroke="{StaticResource Ink}" StrokeThickness="1.6" ShowScale="True" Margin="8,4"
+                                                   Zoom="{Binding DataContext.Zoom, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                   Revision="{Binding DataContext.ShapeRevision, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                </Border>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Definition -->
+                        <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="16" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="Definition" Style="{StaticResource SectionHeader}" Grid.ColumnSpan="3" />
+                                <StackPanel Grid.Row="1">
+                                    <TextBlock Text="NAME" Style="{StaticResource FieldLabel}" Margin="0,0,0,4" />
+                                    <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Line style name" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="1" Grid.Column="2">
+                                    <TextBlock Text="ASCII PREVIEW" Style="{StaticResource FieldLabel}" Margin="0,0,0,4" />
+                                    <DockPanel>
+                                        <Button DockPanel.Dock="Right" Content="Generate" Style="{StaticResource Btn.Ghost}" Command="{Binding GenerateAscii}" Margin="6,0,0,0"
+                                                ToolTip="Rebuild from the pattern" />
+                                        <TextBox Text="{Binding Ascii, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Input.Mono}" AutomationProperties.Name="ASCII preview" />
+                                    </DockPanel>
+                                </StackPanel>
+                                <TextBlock Grid.Row="2" Grid.ColumnSpan="3" Text="PATTERN" Style="{StaticResource FieldLabel}" />
+                                <StackPanel Grid.Row="3" Grid.ColumnSpan="3">
+                                    <TextBox Text="{Binding Pattern, UpdateSourceTrigger=PropertyChanged, Delay=250}" Style="{StaticResource Input.Mono}"
+                                             AutomationProperties.Name="Pattern" ToolTip="Dash (positive), gap (negative), dot (0), [SHAPE,file,S=,R=,X=,Y=], [&quot;TEXT&quot;,style,S=,R=,X=,Y=]" />
+                                    <TextBlock Text="{Binding PatternError}" Foreground="{StaticResource Danger}" FontSize="12" Margin="0,4,0,0" TextWrapping="Wrap"
+                                               Visibility="{Binding PatternError, Converter={StaticResource HasValueToVis}}" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- Elements -->
+                        <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                            <StackPanel>
+                                <DockPanel>
+                                    <TextBlock Text="Pattern elements" Style="{StaticResource SectionHeader}" />
+                                    <TextBlock Text="Shapes and text sit at the current position and take no length." Style="{StaticResource Text.Caption}"
+                                               HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,3,0,0" />
+                                </DockPanel>
+                                <ItemsControl ItemsSource="{Binding Elements}" ItemTemplate="{StaticResource ElementRow}" />
+                                <WrapPanel Margin="0,12,0,0">
+                                    <Button Content="+ Dash" Style="{StaticResource Btn.Chip}" Command="{Binding AddDash}" />
+                                    <Button Content="+ Gap" Style="{StaticResource Btn.Chip}" Command="{Binding AddGap}" />
+                                    <Button Content="+ Dot" Style="{StaticResource Btn.Chip}" Command="{Binding AddDot}" />
+                                    <Button Content="+ Shape" Style="{StaticResource Btn.Chip}" Command="{Binding AddShape}" />
+                                    <Button Content="+ Text" Style="{StaticResource Btn.Chip}" Command="{Binding AddText}" />
+                                </WrapPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Descriptions -->
+                        <Border Style="{StaticResource Card}" Margin="0,0,0,4">
+                            <StackPanel>
+                                <DockPanel Margin="0,0,0,10">
+                                    <Button DockPanel.Dock="Right" Content="Fill empty from English" Style="{StaticResource Btn.Ghost}" Command="{Binding FillDescriptions}" />
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="Descriptions" Style="{StaticResource Text.Subtitle}" />
+                                        <TextBlock Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="10,0,0,0">
+                                            <Run Text="{Binding LanguageCount, Mode=OneWay}" /><Run Text=" of 14 languages. Empty languages are not written." />
+                                        </TextBlock>
+                                    </StackPanel>
+                                </DockPanel>
+                                <DataGrid ItemsSource="{Binding Descriptions}" AutomationProperties.Name="Descriptions by language">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Language" Binding="{Binding Language}" IsReadOnly="True" Width="170" />
+                                        <DataGridTextColumn Header="Code" Binding="{Binding Code}" IsReadOnly="True" Width="60" />
+                                        <DataGridTextColumn Header="Description" Binding="{Binding Text, UpdateSourceTrigger=PropertyChanged}" Width="*" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+        </Grid>
+
+        <!-- ================= Shapes tab ================= -->
+        <Grid Grid.Row="2" Margin="20,14,20,14" Visibility="{Binding Tab, Converter={StaticResource EnumToVis}, ConverterParameter=Shapes}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="16" />
+                <ColumnDefinition Width="400" />
+            </Grid.ColumnDefinitions>
+
+            <Border Style="{StaticResource Card}" Padding="0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <DockPanel Margin="16,14,16,10">
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                            <Button Content="+ New shape" Style="{StaticResource Btn.Primary}" Command="{Binding NewShape}" Margin="0,0,8,0" />
+                            <Button Content="Edit" Style="{StaticResource Btn.Secondary}" Command="{Binding EditShape}" Margin="0,0,8,0" />
+                            <Button Content="Delete" Style="{StaticResource Btn.Danger}" Command="{Binding DeleteShape}" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Text="ltypeshp.shp" Style="{StaticResource Text.Subtitle}" />
+                            <TextBlock Text="Shapes available to line styles as [NAME,ltypeshp.shx,…]. Saving compiles ltypeshp.shx." Style="{StaticResource Text.Caption}" />
+                        </StackPanel>
+                    </DockPanel>
+                    <ListBox x:Name="ShapeList" Grid.Row="1" ItemsSource="{Binding Shapes}" SelectedItem="{Binding SelectedShape}"
+                             BorderThickness="0" Background="Transparent" Padding="10,0,10,10"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled" MouseDoubleClick="OnShapeDoubleClick"
+                             AutomationProperties.Name="Shapes">
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem" BasedOn="{StaticResource CardListItem}">
+                                <Setter Property="Margin" Value="6" />
+                                <Setter Property="Width" Value="190" />
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:ShapeViewModel}">
+                                <StackPanel Margin="12">
+                                    <Border Background="White" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="6" Height="110">
+                                        <c:ShapePreview Primitives="{Binding Primitives}" Stroke="{StaticResource Ink}" Margin="4" />
+                                    </Border>
+                                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{StaticResource Ink}" />
+                                        <ContentPresenter ContentTemplate="{StaticResource ModifiedDot}" Visibility="{Binding IsModified, Converter={StaticResource BoolToVis}}" />
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding Summary}" Style="{StaticResource Text.Caption}" />
+                                    <TextBlock Text="{Binding UsedByText}" Style="{StaticResource Text.Caption}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding Error}" Foreground="{StaticResource Danger}" FontSize="11.5" TextWrapping="Wrap"
+                                               Visibility="{Binding Error, Converter={StaticResource HasValueToVis}}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
+
+            <!-- Shape detail -->
+            <Border Grid.Column="2" Style="{StaticResource Card}" DataContext="{Binding SelectedShape}">
+                <Grid>
+                    <TextBlock Text="Select a shape." Style="{StaticResource Text.Muted}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Visibility="{Binding Converter={StaticResource HasValueToVis}, ConverterParameter=Invert}" />
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Visibility="{Binding Converter={StaticResource HasValueToVis}}">
+                        <StackPanel>
+                            <TextBlock Text="{Binding Name}" Style="{StaticResource Text.Title}" />
+                            <TextBlock Text="{Binding Summary}" Style="{StaticResource Text.Caption}" Margin="0,2,0,12" />
+                            <Border Background="White" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="6" Height="220">
+                                <c:ShapePreview Primitives="{Binding Primitives}" Stroke="{StaticResource Ink}" Margin="6" />
+                            </Border>
+                            <TextBlock Text="Blue circle: insertion point. Dashed line: line axis." Style="{StaticResource Text.Caption}" Margin="0,6,0,0" />
+                            <TextBlock Text="USED BY" Style="{StaticResource FieldLabel}" Margin="0,16,0,4" />
+                            <TextBlock Text="Not used by any line style." Style="{StaticResource Text.Muted}"
+                                       Visibility="{Binding IsUsed, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}" />
+                            <ItemsControl ItemsSource="{Binding UsedBy}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Style="{StaticResource Chip}" Margin="0,0,6,6">
+                                            <TextBlock Text="{Binding}" FontSize="12" />
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="SPECIFICATION" Style="{StaticResource FieldLabel}" Margin="0,12,0,4" />
+                            <TextBox Text="{Binding Specification, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" Style="{StaticResource Input.Mono}"
+                                     Background="{StaticResource Bg}" AutomationProperties.Name="Shape specification bytes" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ================= Footer ================= -->
+        <Border Grid.Row="3" Background="{StaticResource Surface}" BorderBrush="{StaticResource Border}" BorderThickness="0,1,0,0" Padding="20,8">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="Close" Style="{StaticResource Btn.Secondary}" Click="OnClose" />
+                <TextBlock Style="{StaticResource Text.Caption}" VerticalAlignment="Center"
+                           Text="Every save first copies the current files to a backup. Program Files needs administrator permission (one UAC prompt per save)." />
+            </DockPanel>
+        </Border>
+
+        <!-- Busy overlay -->
+        <Grid Grid.RowSpan="4" Background="#80F5F6F8" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}">
+            <Border Style="{StaticResource Card}" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="24,16">
+                <StackPanel>
+                    <TextBlock Text="Saving…" Style="{StaticResource Text.Subtitle}" />
+                    <ProgressBar IsIndeterminate="True" Style="{StaticResource ThinProgress}" Width="220" Margin="0,10,0,0" />
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>
